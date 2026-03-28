@@ -33,9 +33,13 @@ export class AppError extends Error {
     super(detail ?? title);
     this.status = status;
     this.title = title;
-    this.detail = detail;
+    if (detail !== undefined) {
+      this.detail = detail;
+    }
     this.type = type ?? DEFAULT_PROBLEM_TYPE;
-    this.errors = errors;
+    if (errors !== undefined) {
+      this.errors = errors;
+    }
   }
 }
 
@@ -76,17 +80,16 @@ export const errorHandler = (
   }
 
   if (isAppError(error)) {
-    return sendProblem(
-      res,
-      createProblemDetails({
-        status: error.status,
-        title: error.title,
-        detail: error.detail,
-        type: error.type,
-        errors: error.errors,
-        instance: req.originalUrl,
-      })
-    );
+    const problem = createProblemDetails({
+      status: error.status,
+      title: error.title,
+      type: error.type,
+      instance: req.originalUrl,
+      ...(error.detail !== undefined ? { detail: error.detail } : {}),
+      ...(error.errors !== undefined ? { errors: error.errors } : {}),
+    });
+
+    return sendProblem(res, problem);
   }
 
   return sendProblem(

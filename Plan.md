@@ -135,6 +135,8 @@ Status: Done
 
 ### Day 9:
 
+Status: Done
+
 * Decide course/module/lesson modeling (embedded vs referenced)
 * Document decision + tradeoffs
 
@@ -145,6 +147,8 @@ Status: Done
 ---
 
 ### Day 10:
+
+Status: Done
 
 * Draft API routes map (auth, courses, enrollment, progress)
 * Add API versioning decision (v1)
@@ -157,6 +161,8 @@ Status: Done
 
 ### Day 11:
 
+Status: Done
+
 * Add API request validation strategy (zod or joi)
 * Add a simple validator wrapper
 
@@ -167,6 +173,8 @@ Status: Done
 ---
 
 ### Day 12:
+
+Status: Done
 
 * Add baseline logging (request id + method + path)
 * Log format standard
@@ -179,6 +187,8 @@ Status: Done
 
 ### Day 13:
 
+Status: Done
+
 * Create health and readiness endpoints
 * Add simple uptime checks
 
@@ -189,6 +199,8 @@ Status: Done
 ---
 
 ### Day 14:
+
+Status: Done
 
 * Document Day 1–14 learnings and blockers
 * Tighten plan for Phase 2
@@ -203,6 +215,8 @@ Status: Done
 
 ### Day 15:
 
+Status: Done
+
 * Implement register endpoint
 * Password hashing and validation
 
@@ -214,6 +228,8 @@ Status: Done
 
 ### Day 16:
 
+Status: Done
+
 * Implement login endpoint
 * Issue access token (JWT)
 
@@ -224,6 +240,8 @@ Status: Done
 ---
 
 ### Day 17:
+
+Status: Done
 
 * Add refresh token flow
 * Token rotation and revoke list

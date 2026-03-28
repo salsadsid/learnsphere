@@ -20,4 +20,11 @@ export type LoginRequestDto = {
 export type LoginResponseDto = {
   accessToken: string;
   expiresInSeconds: number;
+  refreshToken: string;
+};
+
+export type RefreshResponseDto = {
+  accessToken: string;
+  expiresInSeconds: number;
+  refreshToken: string;
 };

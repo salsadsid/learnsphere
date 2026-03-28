@@ -1,48 +1,36 @@
-type ValidationResult = {
-  isValid: boolean;
-  errors: string[];
-};
+import { z } from "zod";
+import type { ValidationResult } from "../../../shared/validation";
+import { validateSchema } from "../../../shared/validation";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-const isEmailLike = (value: string) => value.includes("@") && value.includes(".");
+const registerSchema = z.object({
+  email: z.string().min(1, "Email is required.").email("Email must be valid."),
+  password: z
+    .string()
+    .min(1, "Password is required.")
+    .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`),
+});
 
-export const validateRegisterInput = (input: {
-  email?: string;
-  password?: string;
-}): ValidationResult => {
-  const errors: string[] = [];
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required.").email("Email must be valid."),
+  password: z.string().min(1, "Password is required."),
+});
 
-  if (!input.email) {
-    errors.push("Email is required.");
-  } else if (!isEmailLike(input.email)) {
-    errors.push("Email must be valid.");
-  }
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required."),
+});
 
-  if (!input.password) {
-    errors.push("Password is required.");
-  } else if (input.password.length < MIN_PASSWORD_LENGTH) {
-    errors.push(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-  }
+export const validateRegisterInput = (input: unknown): ValidationResult<{
+  email: string;
+  password: string;
+}> => validateSchema(registerSchema, input);
 
-  return { isValid: errors.length === 0, errors };
-};
+export const validateLoginInput = (input: unknown): ValidationResult<{
+  email: string;
+  password: string;
+}> => validateSchema(loginSchema, input);
 
-export const validateLoginInput = (input: {
-  email?: string;
-  password?: string;
-}): ValidationResult => {
-  const errors: string[] = [];
-
-  if (!input.email) {
-    errors.push("Email is required.");
-  } else if (!isEmailLike(input.email)) {
-    errors.push("Email must be valid.");
-  }
-
-  if (!input.password) {
-    errors.push("Password is required.");
-  }
-
-  return { isValid: errors.length === 0, errors };
-};
+export const validateRefreshInput = (input: unknown): ValidationResult<{
+  refreshToken: string;
+}> => validateSchema(refreshSchema, input);
