@@ -1,7 +1,6 @@
 import express from "express";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { config } from "./shared/config";
+import { errorHandler, notFoundHandler } from "./shared/errors";
 
 const app = express();
 app.use(express.json());
@@ -10,7 +9,10 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-const port = process.env.PORT || 4000;
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+const port = config.port;
 app.listen(port, () => {
   console.log(`API running on ${port}`);
 });

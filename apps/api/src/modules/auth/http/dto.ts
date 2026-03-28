@@ -1,3 +1,5 @@
+import type { UserRole } from "../domain/types";
+
 export type RegisterRequestDto = {
   email: string;
   password: string;
@@ -6,7 +8,7 @@ export type RegisterRequestDto = {
 export type RegisterResponseDto = {
   id: string;
   email: string;
-  role: string;
+  role: UserRole;
   createdAt: string;
 };
 

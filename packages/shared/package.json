@@ -2,8 +2,13 @@
   "name": "shared",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,6 +16,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "prettier": "^3.3.3",
     "typescript": "^6.0.2"
   }
 }

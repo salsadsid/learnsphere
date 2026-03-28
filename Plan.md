@@ -70,6 +70,8 @@ Status: Done
 
 ### Day 4:
 
+Status: Done
+
 * Draft role model (student/instructor/admin)
 * Add audit log entry shape (who/what/when)
 
@@ -80,6 +82,8 @@ Status: Done
 ---
 
 ### Day 5:
+
+Status: Done
 
 * Draft error handling conventions (problem+json)
 * Add centralized error helper (backend)
@@ -92,6 +96,8 @@ Status: Done
 
 ### Day 6:
 
+Status: Done
+
 * Draft environment config strategy (.env.example per app)
 * Add config loader in backend
 
@@ -103,6 +109,8 @@ Status: Done
 
 ### Day 7:
 
+Status: Done
+
 * Create shared types package (api contracts, common types)
 * Add basic lint and format scripts
 
@@ -113,6 +121,8 @@ Status: Done
 ---
 
 ### Day 8:
+
+Status: Done
 
 * Create basic UI shell (navbar + layout)
 * Wire auth session state placeholder (client only)
