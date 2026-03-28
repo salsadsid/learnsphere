@@ -1,50 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { authGetJson } from "@/shared/api";
+import { clearTokens } from "@/shared/auth-storage";
 
 type SessionState = {
-  isAuthenticated: boolean;
-  name: string;
+  status: "loading" | "guest" | "authenticated";
+  email: string;
   role: "student" | "instructor" | "admin";
 };
 
 const defaultSession: SessionState = {
-  isAuthenticated: false,
-  name: "Guest",
+  status: "loading",
+  email: "",
   role: "student",
+};
+
+type MeResponse = {
+  id: string;
+  email: string;
+  role: "student" | "instructor" | "admin";
+  createdAt: string;
 };
 
 export default function AuthSession() {
   const [session, setSession] = useState<SessionState>(defaultSession);
 
-  const handleToggle = () => {
-    if (session.isAuthenticated) {
-      setSession(defaultSession);
-      return;
-    }
+  useEffect(() => {
+    let isActive = true;
 
-    setSession({
-      isAuthenticated: true,
-      name: "Amina",
-      role: "student",
-    });
+    const loadSession = async () => {
+      const result = await authGetJson<MeResponse>("/api/v1/auth/me");
+      if (!isActive) {
+        return;
+      }
+
+      if (!result.ok || !result.data) {
+        setSession({ status: "guest", email: "", role: "student" });
+        return;
+      }
+
+      setSession({
+        status: "authenticated",
+        email: result.data.email,
+        role: result.data.role,
+      });
+    };
+
+    loadSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleSignOut = () => {
+    clearTokens();
+    setSession({ status: "guest", email: "", role: "student" });
   };
+
+  const statusLabel =
+    session.status === "authenticated" ? `Signed in as ${session.email}` : "Guest session";
 
   return (
     <div className="flex items-center gap-3 rounded-full border border-slate-900/10 bg-white/70 px-3 py-1.5 text-sm shadow-sm">
       <div className="flex items-center gap-2">
         <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         <span className="text-slate-700">
-          {session.isAuthenticated ? `Signed in as ${session.name}` : "Guest session"}
+          {session.status === "loading" ? "Checking session" : statusLabel}
         </span>
       </div>
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-700"
-      >
-        {session.isAuthenticated ? "Sign out" : "Sign in"}
-      </button>
+      {session.status === "authenticated" ? (
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          Sign out
+        </button>
+      ) : (
+        <Link
+          href="/auth/login"
+          className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          Sign in
+        </Link>
+      )}
     </div>
   );
 }

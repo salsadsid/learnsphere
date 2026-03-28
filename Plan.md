@@ -254,6 +254,8 @@ Status: Done
 
 ### Day 18:
 
+Status: Done
+
 * Build auth middleware for API
 * Protect private routes
 
@@ -264,6 +266,8 @@ Status: Done
 ---
 
 ### Day 19:
+
+Status: Done
 
 * Implement role checks (RBAC)
 * Enforce role checks on course creation
@@ -276,6 +280,8 @@ Status: Done
 
 ### Day 20:
 
+Status: Done
+
 * Create auth UI (login/register)
 * Connect to backend API
 
@@ -286,6 +292,8 @@ Status: Done
 ---
 
 ### Day 21:
+
+Status: Done
 
 * Add auth guards to routes (frontend)
 * Handle token expiry and refresh
@@ -298,6 +306,8 @@ Status: Done
 
 ### Day 22:
 
+Status: Done
+
 * Add rate limiting baseline (login/register)
 * Add audit log entries for auth actions
 
@@ -308,6 +318,8 @@ Status: Done
 ---
 
 ### Day 23:
+
+Status: Done
 
 * Add basic API tests for auth
 * Add frontend smoke tests for auth pages

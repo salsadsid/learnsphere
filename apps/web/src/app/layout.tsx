@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { DM_Serif_Display, Space_Grotesk } from "next/font/google";
 import AuthSession from "@/shared/auth-session";
 import "./globals.css";
@@ -44,6 +45,9 @@ export default function RootLayout({
                 </div>
               </div>
               <nav className="hidden items-center gap-8 text-sm font-medium text-slate-700 md:flex">
+                <Link className="transition hover:text-slate-900" href="/dashboard">
+                  Dashboard
+                </Link>
                 <a className="transition hover:text-slate-900" href="#courses">
                   Courses
                 </a>
@@ -53,6 +57,12 @@ export default function RootLayout({
                 <a className="transition hover:text-slate-900" href="#community">
                   Community
                 </a>
+                <Link className="transition hover:text-slate-900" href="/auth/login">
+                  Sign in
+                </Link>
+                <Link className="transition hover:text-slate-900" href="/auth/register">
+                  Register
+                </Link>
               </nav>
               <AuthSession />
             </div>
