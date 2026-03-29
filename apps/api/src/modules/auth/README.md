@@ -20,3 +20,26 @@
 - HTTP -> Use-cases -> Domain
 - Infra -> Use-cases via interfaces
 - Domain never depends on outer layers
+
+## API Endpoints
+- `POST /api/v1/auth/register`
+	- Body: `RegisterRequestDto`
+	- Response: `RegisterResponseDto`
+- `POST /api/v1/auth/login`
+	- Body: `LoginRequestDto`
+	- Response: `LoginResponseDto`
+- `POST /api/v1/auth/refresh`
+	- Body: `{ refreshToken: string }`
+	- Response: `RefreshResponseDto`
+- `POST /api/v1/auth/logout`
+	- Body: `{ refreshToken: string }`
+	- Response: `204 No Content`
+- `GET /api/v1/auth/me`
+	- Header: `Authorization: Bearer <accessToken>`
+	- Response: `MeResponseDto`
+
+## DTOs
+- `RegisterRequestDto`, `RegisterResponseDto`
+- `LoginRequestDto`, `LoginResponseDto`
+- `RefreshResponseDto`
+- `MeResponseDto`

@@ -28,3 +28,10 @@ export type RefreshResponseDto = {
   expiresInSeconds: number;
   refreshToken: string;
 };
+
+export type MeResponseDto = {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+};

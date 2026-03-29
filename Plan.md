@@ -332,6 +332,8 @@ Status: Done
 
 ### Day 24:
 
+Status: Done
+
 * Refactor auth module for clean boundaries
 * Document auth APIs and DTOs
 
