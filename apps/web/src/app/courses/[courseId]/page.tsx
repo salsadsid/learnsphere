@@ -111,9 +111,14 @@ export default function CourseDetailPage({ params }: CourseDetailPageProps) {
           <span>Level: {data.level ?? "intro"}</span>
           <span>{data.modules.length} modules</span>
         </div>
-        <Link className="text-sm font-semibold text-slate-900" href={`/courses/${data.id}/edit`}>
-          Edit course
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link className="text-sm font-semibold text-slate-900" href={`/courses/${data.id}/edit`}>
+            Edit course
+          </Link>
+          <Link className="text-sm font-semibold text-slate-900" href={`/courses/${data.id}/watch`}>
+            Watch intro
+          </Link>
+        </div>
       </header>
 
       <section className="space-y-6">

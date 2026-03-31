@@ -9,6 +9,8 @@ type AppConfig = {
   webOrigin: string;
   adminEmail?: string;
   adminPassword?: string;
+  demoSeedEnabled: boolean;
+  demoInstructorEmail?: string;
 };
 
 const parseNumber = (value: string | undefined, fallback: number): number => {
@@ -28,5 +30,9 @@ export const config: AppConfig = {
   ...(process.env.ADMIN_EMAIL !== undefined ? { adminEmail: process.env.ADMIN_EMAIL } : {}),
   ...(process.env.ADMIN_PASSWORD !== undefined
     ? { adminPassword: process.env.ADMIN_PASSWORD }
+    : {}),
+  demoSeedEnabled: process.env.DEMO_SEED === "true",
+  ...(process.env.DEMO_INSTRUCTOR_EMAIL !== undefined
+    ? { demoInstructorEmail: process.env.DEMO_INSTRUCTOR_EMAIL }
     : {}),
 };

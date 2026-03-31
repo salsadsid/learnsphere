@@ -622,6 +622,8 @@ Status: Done
 
 ### Day 46:
 
+Status: Done
+
 * Add video upload provider integration
 * Add file validation and limits
 
@@ -632,6 +634,8 @@ Status: Done
 ---
 
 ### Day 47:
+
+Status: Done
 
 * Add video player UI
 * Add playback controls
@@ -644,6 +648,8 @@ Status: Done
 
 ### Day 48:
 
+Status: Done
+
 * Track video progress locally
 * Add resume UX on re-open
 
@@ -655,6 +661,8 @@ Status: Done
 
 ### Day 49:
 
+Status: Done
+
 * Save progress to backend
 * Add progress read endpoint
 
@@ -665,6 +673,8 @@ Status: Done
 ---
 
 ### Day 50:
+
+Status: Done
 
 * Handle multi-device conflicts
 * Decide conflict resolution rules

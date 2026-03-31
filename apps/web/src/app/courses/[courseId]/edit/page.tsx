@@ -29,6 +29,12 @@ type CourseStatusResponse = {
   updatedAt: string;
 };
 
+type VideoUploadResponse = {
+  uploadUrl: string;
+  assetUrl: string;
+  expiresAt: string;
+};
+
 type EditState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -58,6 +64,8 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoMessage, setAutoMessage] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadResponse, setUploadResponse] = useState<VideoUploadResponse | null>(null);
   const autoSaveTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -234,6 +242,44 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
     setStatusUpdating(false);
   };
 
+  const handleVideoUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setUploadMessage(null);
+    setUploadResponse(null);
+
+    const formData = new FormData(event.currentTarget);
+    const file = formData.get("video") as File | null;
+
+    if (!file) {
+      setUploadMessage("Please select a video file.");
+      return;
+    }
+
+    if (!file.type.startsWith("video/")) {
+      setUploadMessage("Unsupported file format. Use MP4 or WebM.");
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadMessage("File is too large. Max size is 50MB.");
+      return;
+    }
+
+    const result = await authPostJson<VideoUploadResponse>("/api/v1/videos/upload-url", {
+      fileName: file.name,
+      contentType: file.type,
+      sizeBytes: file.size,
+    });
+
+    if (!result.ok || !result.data) {
+      setUploadMessage(result.error ?? "Unable to create upload URL.");
+      return;
+    }
+
+    setUploadResponse(result.data);
+    setUploadMessage("Upload URL generated. Use it to upload your video.");
+  };
+
   return (
     <AuthGuard>
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-16">
@@ -352,6 +398,40 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
               >
                 {saving ? "Saving..." : "Save changes"}
               </button>
+              </div>
+            </form>
+
+            <form
+              className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 shadow-sm"
+              onSubmit={handleVideoUpload}
+            >
+              <div className="grid gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Video upload</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">Prepare a lesson video</h2>
+                </div>
+                <input
+                  name="video"
+                  type="file"
+                  accept="video/mp4,video/webm"
+                  className="text-sm text-slate-700"
+                />
+                {uploadMessage && (
+                  <p className="text-sm text-slate-600">{uploadMessage}</p>
+                )}
+                {uploadResponse && (
+                  <div className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    <p>Upload URL: {uploadResponse.uploadUrl}</p>
+                    <p>Asset URL: {uploadResponse.assetUrl}</p>
+                    <p>Expires: {new Date(uploadResponse.expiresAt).toLocaleString()}</p>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="h-11 rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Generate upload URL
+                </button>
               </div>
             </form>
           </div>

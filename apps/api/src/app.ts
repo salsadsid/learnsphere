@@ -5,6 +5,8 @@ import { errorHandler, notFoundHandler } from "./shared/errors";
 import { requestLogger } from "./shared/logging";
 import { authRouter } from "./modules/auth/http/routes";
 import { coursesRouter } from "./modules/courses/http/routes";
+import { videosRouter } from "./modules/videos/http/routes";
+import { progressRouter } from "./modules/progress/http/routes";
 
 export const app = express();
 app.use(requestLogger());
@@ -33,6 +35,8 @@ app.options(/\/api\/v1\/.*/, (_req, res) => {
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/courses", coursesRouter);
+app.use("/api/v1/videos", videosRouter);
+app.use("/api/v1/progress", progressRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
