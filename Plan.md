@@ -490,6 +490,8 @@ Status: Done
 
 ### Day 36:
 
+Status: Done
+
 * Add course publish/unpublish
 * Add visibility controls in UI
 
@@ -500,6 +502,8 @@ Status: Done
 ---
 
 ### Day 37:
+
+Status: Done
 
 * Add validation and constraints
 * Add error response standards
@@ -512,6 +516,8 @@ Status: Done
 
 ### Day 38:
 
+Status: Done
+
 * Add course search (basic text index)
 * Add search UI
 
@@ -522,6 +528,8 @@ Status: Done
 ---
 
 ### Day 39:
+
+Status: Done
 
 * Add API tests for courses
 * Add frontend smoke tests
@@ -534,6 +542,8 @@ Status: Done
 
 ### Day 40:
 
+Status: Done
+
 * Refactor course APIs and extract services
 * Document course API contracts
 
@@ -544,6 +554,8 @@ Status: Done
 ---
 
 ### Day 41:
+
+Status: Done
 
 * Build instructor course dashboard
 * Add instructor summary stats
@@ -556,6 +568,8 @@ Status: Done
 
 ### Day 42:
 
+Status: Done
+
 * Build student catalog view
 * Add category filters
 
@@ -566,6 +580,8 @@ Status: Done
 ---
 
 ### Day 43:
+
+Status: Done
 
 * Implement course ownership checks
 * Enforce instructor-only edits
@@ -578,6 +594,8 @@ Status: Done
 
 ### Day 44:
 
+Status: Done
+
 * Add course drafts and autosave
 * Add autosave UI feedback
 
@@ -588,6 +606,8 @@ Status: Done
 ---
 
 ### Day 45:
+
+Status: Done
 
 * Phase 3 review + cleanup
 * Update learning notes

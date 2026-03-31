@@ -1,11 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AuthGuard from "@/shared/auth-guard";
-import { authGetJson, authPatchJson } from "@/shared/api";
+import { authGetJson, authPatchJson, authPostJson } from "@/shared/api";
 
 type CourseDetail = {
+  id: string;
+  title: string;
+  summary?: string;
+  category?: string;
+  level?: "beginner" | "intermediate" | "advanced";
+  status: "draft" | "published";
+  instructorId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CourseStatusResponse = {
   id: string;
   title: string;
   summary?: string;
@@ -43,6 +55,10 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
   });
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoMessage, setAutoMessage] = useState<string | null>(null);
+  const autoSaveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -92,16 +108,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       setForm((prev) => ({ ...prev, [field]: event.target.value }));
     };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!isDirty) {
-      setMessage("No changes to save yet.");
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-
+  const buildPayload = useCallback((): Record<string, string> => {
     const payload: Record<string, string> = {};
     if (form.title.trim()) {
       payload.title = form.title.trim();
@@ -115,6 +122,21 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
     if (form.level) {
       payload.level = form.level;
     }
+
+    return payload;
+  }, [form]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isDirty) {
+      setMessage("No changes to save yet.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+
+    const payload = buildPayload();
 
     const result = await authPatchJson<CourseDetail>(
       `/api/v1/courses/${params.courseId}`,
@@ -130,6 +152,86 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
     setState({ status: "ready", data: result.data });
     setMessage("Course updated successfully.");
     setSaving(false);
+  };
+
+  useEffect(() => {
+    if (state.status !== "ready") {
+      return;
+    }
+
+    if (!isDirty || saving || statusUpdating) {
+      return;
+    }
+
+    if (autoSaveTimer.current !== null) {
+      window.clearTimeout(autoSaveTimer.current);
+    }
+
+    autoSaveTimer.current = window.setTimeout(async () => {
+      const payload = buildPayload();
+      if (Object.keys(payload).length === 0) {
+        return;
+      }
+
+      setAutoSaving(true);
+      const result = await authPatchJson<CourseDetail>(
+        `/api/v1/courses/${params.courseId}`,
+        payload
+      );
+
+      if (result.ok && result.data) {
+        setState({ status: "ready", data: result.data });
+        setAutoMessage("Draft autosaved just now.");
+      }
+
+      setAutoSaving(false);
+    }, 1200);
+
+    return () => {
+      if (autoSaveTimer.current !== null) {
+        window.clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [buildPayload, isDirty, params.courseId, saving, state.status, statusUpdating]);
+
+  const handleStatusUpdate = async (nextStatus: "published" | "draft") => {
+    if (state.status !== "ready") {
+      return;
+    }
+
+    setStatusUpdating(true);
+    setMessage(null);
+
+    const endpoint = nextStatus === "published" ? "publish" : "unpublish";
+    const result = await authPostJson<CourseStatusResponse>(
+      `/api/v1/courses/${params.courseId}/${endpoint}`,
+      {}
+    );
+
+    if (!result.ok || !result.data) {
+      setStatusUpdating(false);
+      setMessage(result.error ?? "Unable to update course visibility.");
+      return;
+    }
+
+    setState({
+      status: "ready",
+      data: {
+        ...state.data,
+        status: result.data.status,
+        updatedAt: result.data.updatedAt,
+        title: result.data.title,
+        summary: result.data.summary,
+        category: result.data.category,
+        level: result.data.level,
+      },
+    });
+    setMessage(
+      nextStatus === "published"
+        ? "Course published successfully."
+        : "Course moved back to draft."
+    );
+    setStatusUpdating(false);
   };
 
   return (
@@ -158,11 +260,42 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
         )}
 
         {state.status === "ready" && (
-          <form
-            className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 shadow-sm"
-            onSubmit={handleSubmit}
-          >
-            <div className="grid gap-6">
+          <div className="grid gap-6">
+            <div className="rounded-3xl border border-slate-900/10 bg-white/70 p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Visibility</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">
+                    {state.data.status === "published" ? "Published" : "Draft"}
+                  </p>
+                </div>
+                {state.data.status === "published" ? (
+                  <button
+                    type="button"
+                    disabled={statusUpdating}
+                    onClick={() => handleStatusUpdate("draft")}
+                    className="h-11 rounded-full border border-slate-900/15 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-900/30 disabled:opacity-60"
+                  >
+                    {statusUpdating ? "Updating..." : "Unpublish"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={statusUpdating}
+                    onClick={() => handleStatusUpdate("published")}
+                    className="h-11 rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+                  >
+                    {statusUpdating ? "Publishing..." : "Publish"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <form
+              className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 shadow-sm"
+              onSubmit={handleSubmit}
+            >
+              <div className="grid gap-6">
               <label className="grid gap-2 text-sm text-slate-700">
                 Course title
                 <input
@@ -206,6 +339,11 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
               </label>
 
               {message && <p className="text-sm text-slate-600">{message}</p>}
+              {autoMessage && (
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  {autoSaving ? "Saving draft..." : autoMessage}
+                </p>
+              )}
 
               <button
                 type="submit"
@@ -214,8 +352,9 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
               >
                 {saving ? "Saving..." : "Save changes"}
               </button>
-            </div>
-          </form>
+              </div>
+            </form>
+          </div>
         )}
       </div>
     </AuthGuard>

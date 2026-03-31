@@ -39,6 +39,18 @@ export type CourseDetailResponseDto = CourseResponseDto & {
   modules: ModuleResponseDto[];
 };
 
+export type InstructorSummaryResponseDto = {
+  totalCourses: number;
+  publishedCourses: number;
+  draftCourses: number;
+  moduleCount: number;
+  lessonCount: number;
+};
+
+export type CourseCategoriesResponseDto = {
+  categories: string[];
+};
+
 export type CreateModuleRequestDto = {
   title: string;
   summary?: string;

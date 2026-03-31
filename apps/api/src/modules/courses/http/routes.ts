@@ -3,63 +3,143 @@ import { Router } from "express";
 import { AppError } from "../../../shared/errors";
 import { requireAuth } from "../../auth/http/middleware";
 import { requireRole } from "../../auth/http/roles";
-import { createCourseUseCase } from "../use-cases/create-course";
-import { createLessonUseCase } from "../use-cases/create-lesson";
-import { createModuleUseCase } from "../use-cases/create-module";
-import { getCourseDetailUseCase } from "../use-cases/get-course-detail";
-import { updateCourseUseCase } from "../use-cases/update-course";
-import type { Course, CourseModule, Lesson } from "../domain/types";
-import type {
-  CourseDetailResponseDto,
-  CourseResponseDto,
-  LessonResponseDto,
-  ListCoursesResponseDto,
-  ModuleResponseDto,
-} from "./dto";
+import type { AuthUser } from "../../auth/domain/types";
 import {
   validateCourseIdParam,
   validateCreateCourseInput,
   validateCreateLessonInput,
   validateCreateModuleInput,
+  validateListCategoriesInput,
   validateListCoursesInput,
   validateModuleIdParam,
   validateUpdateCourseInput,
 } from "./validation";
-import { listCourses } from "../infra/course-store";
+import {
+  createCourseService,
+  createLessonService,
+  createModuleService,
+  getCourseDetailService,
+  getInstructorSummaryService,
+  listCourseCategoriesService,
+  listCoursesService,
+  listInstructorCoursesService,
+  publishCourseService,
+  unpublishCourseService,
+  updateCourseService,
+} from "./service";
+import { findCourseById } from "../infra/course-store";
 
-type AuthenticatedRequest = Request & { user?: { id: string } };
+type AuthenticatedRequest = Request & { user?: AuthUser };
 
 export const coursesRouter = Router();
 
-const toCourseResponse = (course: Course): CourseResponseDto => ({
-  id: course.id,
-  title: course.title,
-  status: course.status,
-  instructorId: course.instructorId,
-  createdAt: course.createdAt.toISOString(),
-  updatedAt: course.updatedAt.toISOString(),
-  ...(course.summary !== undefined ? { summary: course.summary } : {}),
-  ...(course.category !== undefined ? { category: course.category } : {}),
-  ...(course.level !== undefined ? { level: course.level } : {}),
+const assertCourseOwnership = (courseId: string, user: AuthUser | undefined): void => {
+  if (!user) {
+    throw new AppError({
+      status: 401,
+      title: "Unauthorized",
+      detail: "Missing user context.",
+      type: "https://httpstatuses.com/401",
+    });
+  }
+
+  const course = findCourseById(courseId);
+  if (!course) {
+    throw new AppError({
+      status: 404,
+      title: "Not Found",
+      detail: "Course not found.",
+      type: "https://httpstatuses.com/404",
+    });
+  }
+
+  if (user.role === "admin") {
+    return;
+  }
+
+  if (course.instructorId !== user.id) {
+    throw new AppError({
+      status: 403,
+      title: "Forbidden",
+      detail: "You do not have permission to manage this course.",
+      type: "https://httpstatuses.com/403",
+    });
+  }
+};
+
+coursesRouter.get("/categories", (req, res, next) => {
+  try {
+    const validation = validateListCategoriesInput(req.query);
+    if (!validation.isValid || !validation.data) {
+      throw new AppError({
+        status: 400,
+        title: "Validation Error",
+        detail: "Invalid category query parameters.",
+        errors: validation.errors,
+        type: "https://httpstatuses.com/400",
+      });
+    }
+
+    res.json(listCourseCategoriesService(validation.data));
+  } catch (error) {
+    next(error);
+  }
 });
 
-const toLessonResponse = (lesson: Lesson): LessonResponseDto => ({
-  id: lesson.id,
-  title: lesson.title,
-  order: lesson.order,
-  ...(lesson.durationMinutes !== undefined
-    ? { durationMinutes: lesson.durationMinutes }
-    : {}),
-});
+coursesRouter.get(
+  "/instructor/summary",
+  requireAuth,
+  requireRole({ roles: ["instructor", "admin"] }),
+  (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (!req.user) {
+        throw new AppError({
+          status: 401,
+          title: "Unauthorized",
+          detail: "Missing user context.",
+          type: "https://httpstatuses.com/401",
+        });
+      }
 
-const toModuleResponse = (moduleItem: CourseModule, moduleLessons: Lesson[]): ModuleResponseDto => ({
-  id: moduleItem.id,
-  title: moduleItem.title,
-  order: moduleItem.order,
-  lessonCount: moduleLessons.length,
-  lessons: moduleLessons.map(toLessonResponse),
-  ...(moduleItem.summary !== undefined ? { summary: moduleItem.summary } : {}),
-});
+      res.json(getInstructorSummaryService(req.user.id));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+coursesRouter.get(
+  "/instructor/courses",
+  requireAuth,
+  requireRole({ roles: ["instructor", "admin"] }),
+  (req: AuthenticatedRequest, res, next) => {
+    try {
+      const validation = validateListCoursesInput(req.query);
+      if (!validation.isValid || !validation.data) {
+        throw new AppError({
+          status: 400,
+          title: "Validation Error",
+          detail: "Invalid course query parameters.",
+          errors: validation.errors,
+          type: "https://httpstatuses.com/400",
+        });
+      }
+
+      if (!req.user) {
+        throw new AppError({
+          status: 401,
+          title: "Unauthorized",
+          detail: "Missing user context.",
+          type: "https://httpstatuses.com/401",
+        });
+      }
+
+      res.json(listInstructorCoursesService(req.user.id, validation.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 coursesRouter.post(
   "/",
@@ -88,7 +168,7 @@ coursesRouter.post(
         });
       }
 
-      const course = createCourseUseCase({
+      const course = createCourseService({
         title: validation.data.title,
         instructorId,
         ...(validation.data.summary !== undefined ? { summary: validation.data.summary } : {}),
@@ -96,7 +176,7 @@ coursesRouter.post(
         ...(validation.data.level !== undefined ? { level: validation.data.level } : {}),
       });
 
-      res.status(201).json(toCourseResponse(course));
+      res.status(201).json(course);
     } catch (error) {
       next(error);
     }
@@ -116,28 +196,7 @@ coursesRouter.get("/", (req, res, next) => {
       });
     }
 
-    const { items, total } = listCourses({
-      page: validation.data.page,
-      pageSize: validation.data.pageSize,
-      ...(validation.data.q !== undefined ? { q: validation.data.q } : {}),
-      ...(validation.data.category !== undefined ? { category: validation.data.category } : {}),
-      ...(validation.data.instructorId !== undefined
-        ? { instructorId: validation.data.instructorId }
-        : {}),
-      ...(validation.data.status !== undefined ? { status: validation.data.status } : {}),
-    });
-
-    const totalPages = Math.ceil(total / validation.data.pageSize);
-    const nextPage = validation.data.page < totalPages ? validation.data.page + 1 : null;
-
-    const response: ListCoursesResponseDto = {
-      items: items.map(toCourseResponse),
-      page: validation.data.page,
-      pageSize: validation.data.pageSize,
-      total,
-      totalPages,
-      nextPage,
-    };
+    const response = listCoursesService(validation.data);
 
     res.json(response);
   } catch (error) {
@@ -158,14 +217,7 @@ coursesRouter.get("/:courseId", (req, res, next) => {
       });
     }
 
-    const detail = getCourseDetailUseCase(paramsValidation.data.courseId);
-
-    const response: CourseDetailResponseDto = {
-      ...toCourseResponse(detail.course),
-      modules: detail.modules.map((entry) =>
-        toModuleResponse(entry.module, entry.lessons)
-      ),
-    };
+    const response = getCourseDetailService(paramsValidation.data.courseId);
 
     res.json(response);
   } catch (error) {
@@ -201,7 +253,9 @@ coursesRouter.post(
         });
       }
 
-      const moduleItem = createModuleUseCase({
+      assertCourseOwnership(paramsValidation.data.courseId, req.user);
+
+      const moduleItem = createModuleService({
         courseId: paramsValidation.data.courseId,
         title: validation.data.title,
         ...(validation.data.summary !== undefined
@@ -210,7 +264,7 @@ coursesRouter.post(
         ...(validation.data.order !== undefined ? { order: validation.data.order } : {}),
       });
 
-      res.status(201).json(toModuleResponse(moduleItem, []));
+      res.status(201).json(moduleItem);
     } catch (error) {
       next(error);
     }
@@ -257,7 +311,9 @@ coursesRouter.post(
         });
       }
 
-      const lesson = createLessonUseCase({
+      assertCourseOwnership(courseValidation.data.courseId, req.user);
+
+      const lesson = createLessonService({
         courseId: courseValidation.data.courseId,
         moduleId: moduleValidation.data.moduleId,
         title: validation.data.title,
@@ -270,7 +326,7 @@ coursesRouter.post(
           : {}),
       });
 
-      res.status(201).json(toLessonResponse(lesson));
+      res.status(201).json(lesson);
     } catch (error) {
       next(error);
     }
@@ -305,7 +361,9 @@ coursesRouter.patch(
         });
       }
 
-      const updated = updateCourseUseCase({
+      assertCourseOwnership(paramsValidation.data.courseId, req.user);
+
+      const updated = updateCourseService({
         courseId: paramsValidation.data.courseId,
         ...(validation.data.title !== undefined ? { title: validation.data.title } : {}),
         ...(validation.data.summary !== undefined ? { summary: validation.data.summary } : {}),
@@ -313,7 +371,59 @@ coursesRouter.patch(
         ...(validation.data.level !== undefined ? { level: validation.data.level } : {}),
       });
 
-      res.json(toCourseResponse(updated));
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+coursesRouter.post(
+  "/:courseId/publish",
+  requireAuth,
+  requireRole({ roles: ["instructor", "admin"] }),
+  (req: AuthenticatedRequest, res, next) => {
+    try {
+      const paramsValidation = validateCourseIdParam(req.params);
+      if (!paramsValidation.isValid || !paramsValidation.data) {
+        throw new AppError({
+          status: 400,
+          title: "Validation Error",
+          detail: "Invalid course id.",
+          errors: paramsValidation.errors,
+          type: "https://httpstatuses.com/400",
+        });
+      }
+
+      assertCourseOwnership(paramsValidation.data.courseId, req.user);
+      const updated = publishCourseService(paramsValidation.data.courseId);
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+coursesRouter.post(
+  "/:courseId/unpublish",
+  requireAuth,
+  requireRole({ roles: ["instructor", "admin"] }),
+  (req: AuthenticatedRequest, res, next) => {
+    try {
+      const paramsValidation = validateCourseIdParam(req.params);
+      if (!paramsValidation.isValid || !paramsValidation.data) {
+        throw new AppError({
+          status: 400,
+          title: "Validation Error",
+          detail: "Invalid course id.",
+          errors: paramsValidation.errors,
+          type: "https://httpstatuses.com/400",
+        });
+      }
+
+      assertCourseOwnership(paramsValidation.data.courseId, req.user);
+      const updated = unpublishCourseService(paramsValidation.data.courseId);
+      res.json(updated);
     } catch (error) {
       next(error);
     }

@@ -6,7 +6,10 @@ const courseLevelSchema = z.enum(["beginner", "intermediate", "advanced"]);
 const courseStatusSchema = z.enum(["draft", "published"]);
 
 const createCourseSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters."),
+  title: z
+    .string()
+    .min(3, "Title must be at least 3 characters.")
+    .max(120, "Title must be at most 120 characters."),
   summary: z.string().max(300, "Summary must be at most 300 characters.").optional(),
   category: z.string().max(80, "Category must be at most 80 characters.").optional(),
   level: courseLevelSchema.optional(),
@@ -30,13 +33,19 @@ const moduleIdParamSchema = z.object({
 });
 
 const createModuleSchema = z.object({
-  title: z.string().min(3, "Module title must be at least 3 characters."),
+  title: z
+    .string()
+    .min(3, "Module title must be at least 3 characters.")
+    .max(120, "Module title must be at most 120 characters."),
   summary: z.string().max(300, "Summary must be at most 300 characters.").optional(),
   order: z.coerce.number().int().min(1).optional(),
 });
 
 const createLessonSchema = z.object({
-  title: z.string().min(3, "Lesson title must be at least 3 characters."),
+  title: z
+    .string()
+    .min(3, "Lesson title must be at least 3 characters.")
+    .max(120, "Lesson title must be at most 120 characters."),
   content: z.string().max(2000, "Content must be at most 2000 characters.").optional(),
   order: z.coerce.number().int().min(1).optional(),
   durationMinutes: z.coerce.number().int().min(1).max(600).optional(),
@@ -44,7 +53,11 @@ const createLessonSchema = z.object({
 
 const updateCourseSchema = z
   .object({
-    title: z.string().min(3, "Title must be at least 3 characters.").optional(),
+    title: z
+      .string()
+      .min(3, "Title must be at least 3 characters.")
+      .max(120, "Title must be at most 120 characters.")
+      .optional(),
     summary: z.string().max(300, "Summary must be at most 300 characters.").optional(),
     category: z.string().max(80, "Category must be at most 80 characters.").optional(),
     level: courseLevelSchema.optional(),
@@ -60,6 +73,10 @@ const updateCourseSchema = z
     }
   );
 
+const listCategoriesSchema = z.object({
+  status: courseStatusSchema.optional(),
+});
+
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type ListCoursesInput = z.infer<typeof listCoursesSchema>;
 export type CourseIdParam = z.infer<typeof courseIdParamSchema>;
@@ -67,6 +84,7 @@ export type ModuleIdParam = z.infer<typeof moduleIdParamSchema>;
 export type CreateModuleInput = z.infer<typeof createModuleSchema>;
 export type CreateLessonInput = z.infer<typeof createLessonSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
+export type ListCategoriesInput = z.infer<typeof listCategoriesSchema>;
 
 export const validateCreateCourseInput = (
   input: unknown
@@ -98,3 +116,8 @@ export const validateUpdateCourseInput = (
   input: unknown
 ): ValidationResult<UpdateCourseInput> =>
   validateSchema(updateCourseSchema, input);
+
+export const validateListCategoriesInput = (
+  input: unknown
+): ValidationResult<ListCategoriesInput> =>
+  validateSchema(listCategoriesSchema, input);

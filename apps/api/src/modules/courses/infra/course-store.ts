@@ -32,6 +32,10 @@ type ListCoursesResult = {
   total: number;
 };
 
+type ListCategoriesInput = {
+  status?: CourseStatus;
+};
+
 type CreateModuleInput = {
   courseId: CourseId;
   title: string;
@@ -54,6 +58,11 @@ type UpdateCourseInput = {
   summary?: string;
   category?: string;
   level?: CourseLevel;
+};
+
+type UpdateCourseStatusInput = {
+  courseId: CourseId;
+  status: CourseStatus;
 };
 
 const courses: Course[] = [];
@@ -104,15 +113,28 @@ export const updateCourse = (input: UpdateCourseInput): Course | undefined => {
   return course;
 };
 
+export const updateCourseStatus = (input: UpdateCourseStatusInput): Course | undefined => {
+  const course = courses.find((item) => item.id === input.courseId);
+  if (!course) {
+    return undefined;
+  }
+
+  course.status = input.status;
+  course.updatedAt = new Date();
+  return course;
+};
+
 export const listCourses = (input: ListCoursesInput): ListCoursesResult => {
   let filtered = courses.slice();
+
+  const normalize = (value: string): string => value.toLowerCase().trim();
 
   if (input.status) {
     filtered = filtered.filter((course) => course.status === input.status);
   }
 
   if (input.category) {
-    const category = input.category.toLowerCase();
+    const category = normalize(input.category);
     filtered = filtered.filter((course) => course.category?.toLowerCase() === category);
   }
 
@@ -121,11 +143,12 @@ export const listCourses = (input: ListCoursesInput): ListCoursesResult => {
   }
 
   if (input.q) {
-    const term = input.q.toLowerCase();
+    const term = normalize(input.q);
     filtered = filtered.filter((course) => {
-      const inTitle = course.title.toLowerCase().includes(term);
-      const inSummary = course.summary?.toLowerCase().includes(term) ?? false;
-      return inTitle || inSummary;
+      const haystack = [course.title, course.summary ?? "", course.category ?? ""]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(term);
     });
   }
 
@@ -137,6 +160,21 @@ export const listCourses = (input: ListCoursesInput): ListCoursesResult => {
     .slice(start, start + input.pageSize);
 
   return { items, total };
+};
+
+export const listCategories = (input: ListCategoriesInput = {}): string[] => {
+  const filtered = input.status
+    ? courses.filter((course) => course.status === input.status)
+    : courses;
+
+  const categories = new Set<string>();
+  for (const course of filtered) {
+    if (course.category) {
+      categories.add(course.category);
+    }
+  }
+
+  return Array.from(categories).sort((a, b) => a.localeCompare(b));
 };
 
 const getNextModuleOrder = (courseId: CourseId): number => {
@@ -205,3 +243,20 @@ export const listLessonsByModule = (moduleId: ModuleId): Lesson[] =>
     .filter((lesson) => lesson.moduleId === moduleId)
     .slice()
     .sort((a, b) => a.order - b.order);
+
+export const countLessonsByCourse = (courseId: CourseId): number =>
+  lessons.filter((lesson) => lesson.courseId === courseId).length;
+
+export const countModulesByInstructor = (instructorId: string): number => {
+  const courseIds = courses
+    .filter((course) => course.instructorId === instructorId)
+    .map((course) => course.id);
+  return modules.filter((moduleItem) => courseIds.includes(moduleItem.courseId)).length;
+};
+
+export const countLessonsByInstructor = (instructorId: string): number => {
+  const courseIds = courses
+    .filter((course) => course.instructorId === instructorId)
+    .map((course) => course.id);
+  return lessons.filter((lesson) => courseIds.includes(lesson.courseId)).length;
+};

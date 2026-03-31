@@ -7,6 +7,8 @@ type AppConfig = {
   nodeEnv: string;
   jwtSecret: string;
   webOrigin: string;
+  adminEmail?: string;
+  adminPassword?: string;
 };
 
 const parseNumber = (value: string | undefined, fallback: number): number => {
@@ -23,4 +25,8 @@ export const config: AppConfig = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+  ...(process.env.ADMIN_EMAIL !== undefined ? { adminEmail: process.env.ADMIN_EMAIL } : {}),
+  ...(process.env.ADMIN_PASSWORD !== undefined
+    ? { adminPassword: process.env.ADMIN_PASSWORD }
+    : {}),
 };
