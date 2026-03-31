@@ -34,12 +34,19 @@
 - `POST /api/v1/auth/logout`
 	- Body: `{ refreshToken: string }`
 	- Response: `204 No Content`
+- `POST /api/v1/auth/revoke`
+	- Body: `{ refreshToken: string }`
+	- Response: `204 No Content`
 - `GET /api/v1/auth/me`
 	- Header: `Authorization: Bearer <accessToken>`
 	- Response: `MeResponseDto`
+- `GET /api/v1/auth/profile`
+	- Header: `Authorization: Bearer <accessToken>`
+	- Response: `ProfileResponseDto`
 
 ## DTOs
 - `RegisterRequestDto`, `RegisterResponseDto`
 - `LoginRequestDto`, `LoginResponseDto`
 - `RefreshResponseDto`
 - `MeResponseDto`
+- `ProfileResponseDto`

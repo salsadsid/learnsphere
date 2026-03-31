@@ -5,7 +5,9 @@ import {
   loginHandler,
   logoutHandler,
   meHandler,
+  profileHandler,
   refreshHandler,
+  revokeHandler,
   registerHandler,
 } from "./handlers";
 
@@ -21,4 +23,6 @@ authRouter.post("/register", authLimiter, registerHandler);
 authRouter.post("/login", authLimiter, loginHandler);
 authRouter.post("/refresh", refreshHandler);
 authRouter.post("/logout", logoutHandler);
+authRouter.post("/revoke", revokeHandler);
 authRouter.get("/me", requireAuth, meHandler);
+authRouter.get("/profile", requireAuth, profileHandler);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { postJson } from "@/shared/api";
 import { setTokens } from "@/shared/auth-storage";
 
@@ -25,6 +26,26 @@ export default function LoginPage() {
   const [form, setForm] = useState<LoginFormState>(defaultForm);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const reason = searchParams.get("reason");
+    if (!reason) {
+      return;
+    }
+
+    if (reason === "expired") {
+      setMessage("Your session expired. Please sign in again.");
+      setStatus("error");
+      return;
+    }
+
+    if (reason === "forbidden") {
+      setMessage("This account does not have access to that page.");
+      setStatus("error");
+    }
+  }, [searchParams]);
 
   const handleChange = (field: keyof LoginFormState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,8 +70,16 @@ export default function LoginPage() {
     });
 
     setStatus("success");
-    setMessage("Signed in. You can continue to your dashboard.");
+    setMessage("Signed in. Redirecting to your next step.");
     setForm(defaultForm);
+
+    const next = searchParams.get("next");
+    if (next) {
+      router.push(next);
+      return;
+    }
+
+    router.push("/dashboard");
   };
 
   return (

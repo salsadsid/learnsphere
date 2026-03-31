@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { authGetJson } from "@/shared/api";
-import { clearTokens } from "@/shared/auth-storage";
+import { authGetJson, postJson } from "@/shared/api";
+import { clearTokens, getRefreshToken } from "@/shared/auth-storage";
 
 type SessionState = {
   status: "loading" | "guest" | "authenticated";
@@ -55,7 +55,12 @@ export default function AuthSession() {
     };
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      await postJson("/api/v1/auth/logout", { refreshToken });
+    }
+
     clearTokens();
     setSession({ status: "guest", email: "", role: "student" });
   };

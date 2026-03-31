@@ -35,3 +35,10 @@ export type MeResponseDto = {
   role: UserRole;
   createdAt: string;
 };
+
+export type ProfileResponseDto = {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+};

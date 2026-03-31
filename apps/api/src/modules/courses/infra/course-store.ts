@@ -1,0 +1,207 @@
+import { randomUUID } from "crypto";
+import type {
+  Course,
+  CourseId,
+  CourseLevel,
+  CourseModule,
+  CourseStatus,
+  Lesson,
+  LessonId,
+  ModuleId,
+} from "../domain/types";
+
+type CreateCourseInput = {
+  title: string;
+  summary?: string;
+  category?: string;
+  level?: CourseLevel;
+  instructorId: string;
+};
+
+type ListCoursesInput = {
+  page: number;
+  pageSize: number;
+  q?: string;
+  category?: string;
+  instructorId?: string;
+  status?: CourseStatus;
+};
+
+type ListCoursesResult = {
+  items: Course[];
+  total: number;
+};
+
+type CreateModuleInput = {
+  courseId: CourseId;
+  title: string;
+  summary?: string;
+  order?: number;
+};
+
+type CreateLessonInput = {
+  courseId: CourseId;
+  moduleId: ModuleId;
+  title: string;
+  content?: string;
+  order?: number;
+  durationMinutes?: number;
+};
+
+type UpdateCourseInput = {
+  courseId: CourseId;
+  title?: string;
+  summary?: string;
+  category?: string;
+  level?: CourseLevel;
+};
+
+const courses: Course[] = [];
+const modules: CourseModule[] = [];
+const lessons: Lesson[] = [];
+
+export const createCourse = (input: CreateCourseInput): Course => {
+  const now = new Date();
+  const course: Course = {
+    id: randomUUID(),
+    title: input.title,
+    status: "draft",
+    instructorId: input.instructorId,
+    createdAt: now,
+    updatedAt: now,
+    ...(input.summary !== undefined ? { summary: input.summary } : {}),
+    ...(input.category !== undefined ? { category: input.category } : {}),
+    ...(input.level !== undefined ? { level: input.level } : {}),
+  };
+
+  courses.push(course);
+  return course;
+};
+
+export const updateCourse = (input: UpdateCourseInput): Course | undefined => {
+  const course = courses.find((item) => item.id === input.courseId);
+  if (!course) {
+    return undefined;
+  }
+
+  if (input.title !== undefined) {
+    course.title = input.title;
+  }
+
+  if (input.summary !== undefined) {
+    course.summary = input.summary;
+  }
+
+  if (input.category !== undefined) {
+    course.category = input.category;
+  }
+
+  if (input.level !== undefined) {
+    course.level = input.level;
+  }
+
+  course.updatedAt = new Date();
+  return course;
+};
+
+export const listCourses = (input: ListCoursesInput): ListCoursesResult => {
+  let filtered = courses.slice();
+
+  if (input.status) {
+    filtered = filtered.filter((course) => course.status === input.status);
+  }
+
+  if (input.category) {
+    const category = input.category.toLowerCase();
+    filtered = filtered.filter((course) => course.category?.toLowerCase() === category);
+  }
+
+  if (input.instructorId) {
+    filtered = filtered.filter((course) => course.instructorId === input.instructorId);
+  }
+
+  if (input.q) {
+    const term = input.q.toLowerCase();
+    filtered = filtered.filter((course) => {
+      const inTitle = course.title.toLowerCase().includes(term);
+      const inSummary = course.summary?.toLowerCase().includes(term) ?? false;
+      return inTitle || inSummary;
+    });
+  }
+
+  const total = filtered.length;
+  const start = (input.page - 1) * input.pageSize;
+  const items = filtered
+    .slice()
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(start, start + input.pageSize);
+
+  return { items, total };
+};
+
+const getNextModuleOrder = (courseId: CourseId): number => {
+  const count = modules.filter((item) => item.courseId === courseId).length;
+  return count + 1;
+};
+
+const getNextLessonOrder = (moduleId: ModuleId): number => {
+  const count = lessons.filter((item) => item.moduleId === moduleId).length;
+  return count + 1;
+};
+
+export const createModule = (input: CreateModuleInput): CourseModule => {
+  const now = new Date();
+  const moduleItem: CourseModule = {
+    id: randomUUID(),
+    courseId: input.courseId,
+    title: input.title,
+    order: input.order ?? getNextModuleOrder(input.courseId),
+    createdAt: now,
+    updatedAt: now,
+    ...(input.summary !== undefined ? { summary: input.summary } : {}),
+  };
+
+  modules.push(moduleItem);
+  return moduleItem;
+};
+
+export const createLesson = (input: CreateLessonInput): Lesson => {
+  const now = new Date();
+  const lesson: Lesson = {
+    id: randomUUID(),
+    courseId: input.courseId,
+    moduleId: input.moduleId,
+    title: input.title,
+    order: input.order ?? getNextLessonOrder(input.moduleId),
+    createdAt: now,
+    updatedAt: now,
+    ...(input.content !== undefined ? { content: input.content } : {}),
+    ...(input.durationMinutes !== undefined
+      ? { durationMinutes: input.durationMinutes }
+      : {}),
+  };
+
+  lessons.push(lesson);
+  return lesson;
+};
+
+export const findCourseById = (id: CourseId): Course | undefined =>
+  courses.find((course) => course.id === id);
+
+export const findModuleById = (id: ModuleId): CourseModule | undefined =>
+  modules.find((moduleItem) => moduleItem.id === id);
+
+export const findLessonById = (id: LessonId): Lesson | undefined =>
+  lessons.find((lesson) => lesson.id === id);
+
+export const listModulesByCourse = (courseId: CourseId): CourseModule[] =>
+  modules
+    .filter((moduleItem) => moduleItem.courseId === courseId)
+    .slice()
+    .sort((a, b) => a.order - b.order);
+
+export const listLessonsByModule = (moduleId: ModuleId): Lesson[] =>
+  lessons
+    .filter((lesson) => lesson.moduleId === moduleId)
+    .slice()
+    .sort((a, b) => a.order - b.order);

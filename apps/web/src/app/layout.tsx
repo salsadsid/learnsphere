@@ -48,9 +48,12 @@ export default function RootLayout({
                 <Link className="transition hover:text-slate-900" href="/dashboard">
                   Dashboard
                 </Link>
-                <a className="transition hover:text-slate-900" href="#courses">
+                <Link className="transition hover:text-slate-900" href="/profile">
+                  Profile
+                </Link>
+                <Link className="transition hover:text-slate-900" href="/courses">
                   Courses
-                </a>
+                </Link>
                 <a className="transition hover:text-slate-900" href="#progress">
                   Progress
                 </a>

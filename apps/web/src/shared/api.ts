@@ -137,3 +137,6 @@ export const authGetJson = async <T>(path: string): Promise<ApiResponse<T>> =>
 
 export const authPostJson = async <T>(path: string, body: unknown): Promise<ApiResponse<T>> =>
   requestJson<T>(path, { method: "POST", body, auth: true });
+
+export const authPatchJson = async <T>(path: string, body: unknown): Promise<ApiResponse<T>> =>
+  requestJson<T>(path, { method: "PATCH", body, auth: true });

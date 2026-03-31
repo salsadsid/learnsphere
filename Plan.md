@@ -345,6 +345,8 @@ Status: Done
 
 ### Day 25:
 
+Status: Done
+
 * Add user profile endpoint
 * Add profile UI page
 
@@ -355,6 +357,8 @@ Status: Done
 ---
 
 ### Day 26:
+
+Status: Done
 
 * Add logout and token revoke endpoint
 * Clear client auth state
@@ -367,6 +371,8 @@ Status: Done
 
 ### Day 27:
 
+Status: Done
+
 * Add auth error states (expired token, forbidden)
 * Improve error handling UI
 
@@ -377,6 +383,8 @@ Status: Done
 ---
 
 ### Day 28:
+
+Status: Done
 
 * Phase 2 review + cleanup
 * Update learning notes
@@ -391,6 +399,8 @@ Status: Done
 
 ### Day 29:
 
+Status: Done
+
 * Create course model and schema
 * Add course create endpoint
 
@@ -401,6 +411,8 @@ Status: Done
 ---
 
 ### Day 30:
+
+Status: Done
 
 * Add course list endpoint
 * Add pagination and filtering
@@ -413,6 +425,8 @@ Status: Done
 
 ### Day 31:
 
+Status: Done
+
 * Build course list UI
 * Connect to list endpoint
 
@@ -423,6 +437,8 @@ Status: Done
 ---
 
 ### Day 32:
+
+Status: Done
 
 * Build course details endpoint
 * Add course details UI
@@ -435,6 +451,8 @@ Status: Done
 
 ### Day 33:
 
+Status: Done
+
 * Create module and lesson models
 * Add nested create endpoints
 
@@ -446,6 +464,8 @@ Status: Done
 
 ### Day 34:
 
+Status: Done
+
 * Implement nested data retrieval
 * Optimize detail API payload
 
@@ -456,6 +476,8 @@ Status: Done
 ---
 
 ### Day 35:
+
+Status: Done
 
 * Add course editing endpoint
 * Build course edit UI

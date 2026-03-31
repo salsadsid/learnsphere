@@ -1,0 +1,223 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import AuthGuard from "@/shared/auth-guard";
+import { authGetJson, authPatchJson } from "@/shared/api";
+
+type CourseDetail = {
+  id: string;
+  title: string;
+  summary?: string;
+  category?: string;
+  level?: "beginner" | "intermediate" | "advanced";
+  status: "draft" | "published";
+  instructorId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type EditState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; data: CourseDetail };
+
+type FormState = {
+  title: string;
+  summary: string;
+  category: string;
+  level: "" | "beginner" | "intermediate" | "advanced";
+};
+
+type CourseEditPageProps = {
+  params: { courseId: string };
+};
+
+export default function CourseEditPage({ params }: CourseEditPageProps) {
+  const [state, setState] = useState<EditState>({ status: "loading" });
+  const [form, setForm] = useState<FormState>({
+    title: "",
+    summary: "",
+    category: "",
+    level: "",
+  });
+  const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCourse = async () => {
+      const result = await authGetJson<CourseDetail>(`/api/v1/courses/${params.courseId}`);
+      if (!active) {
+        return;
+      }
+
+      if (!result.ok || !result.data) {
+        setState({ status: "error", message: result.error ?? "Unable to load course." });
+        return;
+      }
+
+      setState({ status: "ready", data: result.data });
+      setForm({
+        title: result.data.title,
+        summary: result.data.summary ?? "",
+        category: result.data.category ?? "",
+        level: result.data.level ?? "",
+      });
+    };
+
+    loadCourse();
+
+    return () => {
+      active = false;
+    };
+  }, [params.courseId]);
+
+  const isDirty = useMemo(() => {
+    if (state.status !== "ready") {
+      return false;
+    }
+
+    return (
+      form.title !== state.data.title ||
+      form.summary !== (state.data.summary ?? "") ||
+      form.category !== (state.data.category ?? "") ||
+      form.level !== (state.data.level ?? "")
+    );
+  }, [form, state]);
+
+  const updateField = (field: keyof FormState) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isDirty) {
+      setMessage("No changes to save yet.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+
+    const payload: Record<string, string> = {};
+    if (form.title.trim()) {
+      payload.title = form.title.trim();
+    }
+    if (form.summary.trim()) {
+      payload.summary = form.summary.trim();
+    }
+    if (form.category.trim()) {
+      payload.category = form.category.trim();
+    }
+    if (form.level) {
+      payload.level = form.level;
+    }
+
+    const result = await authPatchJson<CourseDetail>(
+      `/api/v1/courses/${params.courseId}`,
+      payload
+    );
+
+    if (!result.ok || !result.data) {
+      setSaving(false);
+      setMessage(result.error ?? "Unable to update course.");
+      return;
+    }
+
+    setState({ status: "ready", data: result.data });
+    setMessage("Course updated successfully.");
+    setSaving(false);
+  };
+
+  return (
+    <AuthGuard>
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-16">
+        <header className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Edit course</p>
+          <h1 className="text-3xl font-semibold text-slate-900 font-[var(--font-display)]">
+            Update course details
+          </h1>
+          <Link className="text-sm font-semibold text-slate-900" href={`/courses/${params.courseId}`}>
+            Back to course
+          </Link>
+        </header>
+
+        {state.status === "loading" && (
+          <div className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 text-sm text-slate-600">
+            Loading course...
+          </div>
+        )}
+
+        {state.status === "error" && (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-sm text-rose-700">
+            {state.message}
+          </div>
+        )}
+
+        {state.status === "ready" && (
+          <form
+            className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 shadow-sm"
+            onSubmit={handleSubmit}
+          >
+            <div className="grid gap-6">
+              <label className="grid gap-2 text-sm text-slate-700">
+                Course title
+                <input
+                  className="h-11 rounded-2xl border border-slate-900/10 bg-white px-4 text-sm"
+                  value={form.title}
+                  onChange={updateField("title")}
+                  required
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm text-slate-700">
+                Summary
+                <textarea
+                  className="min-h-[120px] rounded-2xl border border-slate-900/10 bg-white px-4 py-3 text-sm"
+                  value={form.summary}
+                  onChange={updateField("summary")}
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm text-slate-700">
+                Category
+                <input
+                  className="h-11 rounded-2xl border border-slate-900/10 bg-white px-4 text-sm"
+                  value={form.category}
+                  onChange={updateField("category")}
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm text-slate-700">
+                Level
+                <select
+                  className="h-11 rounded-2xl border border-slate-900/10 bg-white px-4 text-sm"
+                  value={form.level}
+                  onChange={updateField("level")}
+                >
+                  <option value="">Select level</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
+
+              {message && <p className="text-sm text-slate-600">{message}</p>}
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="h-11 rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </AuthGuard>
+  );
+}
