@@ -7,6 +7,8 @@ export type AuthUser = {
   email: string;
   passwordHash: string;
   role: UserRole;
+  isActive: boolean;
+  deactivatedAt?: Date;
   createdAt: Date;
 };
 

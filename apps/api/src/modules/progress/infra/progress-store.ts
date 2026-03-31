@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import mongoose, { Schema } from "mongoose";
 import type {
   LessonCompletionRecord,
   ProgressRecord,
@@ -6,11 +7,6 @@ import type {
   VideoEventType,
   WatchSnapshotRecord,
 } from "../domain/types";
-
-const progressRecords: ProgressRecord[] = [];
-const completionRecords: LessonCompletionRecord[] = [];
-const snapshotRecords: WatchSnapshotRecord[] = [];
-const eventRecords: VideoEventRecord[] = [];
 
 type SaveProgressInput = {
   userId: string;
@@ -50,27 +46,121 @@ type SaveProgressResult = {
   reason?: "stale" | "equal";
 };
 
-export const findProgress = (userId: string, videoId: string): ProgressRecord | undefined =>
-  progressRecords.find((record) => record.userId === userId && record.videoId === videoId);
+const ProgressSchema = new Schema<ProgressRecord>(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    videoId: { type: String, required: true, index: true },
+    positionSeconds: { type: Number, required: true },
+    durationSeconds: { type: Number, required: true },
+    deviceId: { type: String },
+    updatedAt: { type: Date, required: true },
+    clientUpdatedAt: { type: Date },
+  },
+  { versionKey: false }
+);
 
-export const findLessonCompletion = (
+ProgressSchema.index({ userId: 1, videoId: 1 }, { unique: true });
+
+const LessonCompletionSchema = new Schema<LessonCompletionRecord>(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    courseId: { type: String, required: true, index: true },
+    lessonId: { type: String, required: true, index: true },
+    completedAt: { type: Date, required: true },
+  },
+  { versionKey: false }
+);
+
+LessonCompletionSchema.index({ userId: 1, courseId: 1, lessonId: 1 }, { unique: true });
+
+const WatchSnapshotSchema = new Schema<WatchSnapshotRecord>(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    courseId: { type: String, required: true, index: true },
+    lessonId: { type: String, required: true, index: true },
+    positionSeconds: { type: Number, required: true },
+    durationSeconds: { type: Number, required: true },
+    recordedAt: { type: Date, required: true },
+  },
+  { versionKey: false }
+);
+
+const VideoEventSchema = new Schema<VideoEventRecord>(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    courseId: { type: String, required: true, index: true },
+    lessonId: { type: String, required: true, index: true },
+    eventType: {
+      type: String,
+      required: true,
+      enum: ["play", "pause", "ended", "seeked", "error", "loaded"],
+    },
+    positionSeconds: { type: Number },
+    deviceId: { type: String },
+    createdAt: { type: Date, required: true },
+  },
+  { versionKey: false }
+);
+
+const ProgressModel =
+  (mongoose.models.ProgressRecord as mongoose.Model<ProgressRecord> | undefined) ??
+  mongoose.model<ProgressRecord>("ProgressRecord", ProgressSchema);
+const LessonCompletionModel =
+  (mongoose.models.LessonCompletionRecord as mongoose.Model<LessonCompletionRecord> | undefined) ??
+  mongoose.model<LessonCompletionRecord>("LessonCompletionRecord", LessonCompletionSchema);
+const WatchSnapshotModel =
+  (mongoose.models.WatchSnapshotRecord as mongoose.Model<WatchSnapshotRecord> | undefined) ??
+  mongoose.model<WatchSnapshotRecord>("WatchSnapshotRecord", WatchSnapshotSchema);
+const VideoEventModel =
+  (mongoose.models.VideoEventRecord as mongoose.Model<VideoEventRecord> | undefined) ??
+  mongoose.model<VideoEventRecord>("VideoEventRecord", VideoEventSchema);
+
+export const findProgress = async (
+  userId: string,
+  videoId: string
+): Promise<ProgressRecord | undefined> => {
+  const record = await ProgressModel.findOne({ userId, videoId })
+    .select("-__v -_id")
+    .lean<ProgressRecord>()
+    .exec();
+  return record ?? undefined;
+};
+
+export const findLessonCompletion = async (
   userId: string,
   lessonId: string
-): LessonCompletionRecord | undefined =>
-  completionRecords.find((record) => record.userId === userId && record.lessonId === lessonId);
+): Promise<LessonCompletionRecord | undefined> => {
+  const record = await LessonCompletionModel.findOne({ userId, lessonId })
+    .select("-__v -_id")
+    .lean<LessonCompletionRecord>()
+    .exec();
+  return record ?? undefined;
+};
 
-export const listLessonCompletionsByCourse = (
+export const listLessonCompletionsByCourse = async (
   userId: string,
   courseId: string
-): LessonCompletionRecord[] =>
-  completionRecords.filter(
-    (record) => record.userId === userId && record.courseId === courseId
-  );
+): Promise<LessonCompletionRecord[]> =>
+  LessonCompletionModel.find({ userId, courseId })
+    .sort({ completedAt: -1 })
+    .select("-__v -_id")
+    .lean<LessonCompletionRecord[]>()
+    .exec();
 
-export const listLessonCompletionsByCourseAll = (courseId: string): LessonCompletionRecord[] =>
-  completionRecords.filter((record) => record.courseId === courseId);
+export const listLessonCompletionsByCourseAll = async (
+  courseId: string
+): Promise<LessonCompletionRecord[]> =>
+  LessonCompletionModel.find({ courseId })
+    .sort({ completedAt: -1 })
+    .select("-__v -_id")
+    .lean<LessonCompletionRecord[]>()
+    .exec();
 
-export const addWatchSnapshot = (input: AddSnapshotInput): WatchSnapshotRecord => {
+export const addWatchSnapshot = async (input: AddSnapshotInput): Promise<WatchSnapshotRecord> => {
   const record: WatchSnapshotRecord = {
     id: randomUUID(),
     userId: input.userId,
@@ -81,22 +171,30 @@ export const addWatchSnapshot = (input: AddSnapshotInput): WatchSnapshotRecord =
     recordedAt: new Date(),
   };
 
-  snapshotRecords.push(record);
+  await WatchSnapshotModel.create(record);
   return record;
 };
 
-export const listWatchSnapshotsByCourse = (courseId: string): WatchSnapshotRecord[] =>
-  snapshotRecords.filter((record) => record.courseId === courseId);
+export const listWatchSnapshotsByCourse = async (
+  courseId: string
+): Promise<WatchSnapshotRecord[]> =>
+  WatchSnapshotModel.find({ courseId })
+    .sort({ recordedAt: -1 })
+    .select("-__v -_id")
+    .lean<WatchSnapshotRecord[]>()
+    .exec();
 
-export const listWatchSnapshotsByCourseAndUser = (
+export const listWatchSnapshotsByCourseAndUser = async (
   courseId: string,
   userId: string
-): WatchSnapshotRecord[] =>
-  snapshotRecords.filter(
-    (record) => record.courseId === courseId && record.userId === userId
-  );
+): Promise<WatchSnapshotRecord[]> =>
+  WatchSnapshotModel.find({ courseId, userId })
+    .sort({ recordedAt: -1 })
+    .select("-__v -_id")
+    .lean<WatchSnapshotRecord[]>()
+    .exec();
 
-export const addVideoEvent = (input: AddEventInput): VideoEventRecord => {
+export const addVideoEvent = async (input: AddEventInput): Promise<VideoEventRecord> => {
   const record: VideoEventRecord = {
     id: randomUUID(),
     userId: input.userId,
@@ -108,17 +206,21 @@ export const addVideoEvent = (input: AddEventInput): VideoEventRecord => {
     ...(input.deviceId !== undefined ? { deviceId: input.deviceId } : {}),
   };
 
-  eventRecords.push(record);
+  await VideoEventModel.create(record);
   return record;
 };
 
-export const markLessonComplete = (input: MarkLessonCompleteInput): LessonCompletionRecord => {
-  const existing = completionRecords.find(
-    (record) =>
-      record.userId === input.userId &&
-      record.courseId === input.courseId &&
-      record.lessonId === input.lessonId
-  );
+export const markLessonComplete = async (
+  input: MarkLessonCompleteInput
+): Promise<LessonCompletionRecord> => {
+  const existing = await LessonCompletionModel.findOne({
+    userId: input.userId,
+    courseId: input.courseId,
+    lessonId: input.lessonId,
+  })
+    .select("-__v -_id")
+    .lean<LessonCompletionRecord>()
+    .exec();
 
   if (existing) {
     return existing;
@@ -132,13 +234,30 @@ export const markLessonComplete = (input: MarkLessonCompleteInput): LessonComple
     completedAt: new Date(),
   };
 
-  completionRecords.push(record);
-  return record;
+  try {
+    await LessonCompletionModel.create(record);
+    return record;
+  } catch (error) {
+    const retry = await LessonCompletionModel.findOne({
+      userId: input.userId,
+      courseId: input.courseId,
+      lessonId: input.lessonId,
+    })
+      .select("-__v -_id")
+      .lean<LessonCompletionRecord>()
+      .exec();
+
+    if (retry) {
+      return retry;
+    }
+
+    throw error;
+  }
 };
 
-export const saveProgress = (input: SaveProgressInput): SaveProgressResult => {
+export const saveProgress = async (input: SaveProgressInput): Promise<SaveProgressResult> => {
   const now = new Date();
-  const existing = findProgress(input.userId, input.videoId);
+  const existing = await ProgressModel.findOne({ userId: input.userId, videoId: input.videoId }).exec();
 
   if (!existing) {
     const record: ProgressRecord = {
@@ -154,12 +273,14 @@ export const saveProgress = (input: SaveProgressInput): SaveProgressResult => {
         : {}),
     };
 
-    progressRecords.push(record);
+    await ProgressModel.create(record);
     return { record, accepted: true };
   }
 
   if (input.clientUpdatedAt && input.clientUpdatedAt < existing.updatedAt) {
-    return { record: existing, accepted: false, reason: "stale" };
+    const record = existing.toObject({ versionKey: false }) as ProgressRecord & { _id?: unknown };
+    delete record._id;
+    return { record, accepted: false, reason: "stale" };
   }
 
   const nextPosition =
@@ -177,8 +298,12 @@ export const saveProgress = (input: SaveProgressInput): SaveProgressResult => {
     existing.clientUpdatedAt = input.clientUpdatedAt;
   }
 
+  await existing.save();
+
+  const record = existing.toObject({ versionKey: false }) as ProgressRecord & { _id?: unknown };
+  delete record._id;
   return {
-    record: existing,
+    record,
     accepted: true,
     ...(input.clientUpdatedAt === existing.updatedAt ? { reason: "equal" } : {}),
   };

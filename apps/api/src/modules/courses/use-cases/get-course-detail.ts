@@ -7,8 +7,8 @@ type CourseDetail = {
   modules: Array<{ module: CourseModule; lessons: Lesson[] }>;
 };
 
-export const getCourseDetailUseCase = (courseId: string): CourseDetail => {
-  const course = findCourseById(courseId);
+export const getCourseDetailUseCase = async (courseId: string): Promise<CourseDetail> => {
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -18,10 +18,13 @@ export const getCourseDetailUseCase = (courseId: string): CourseDetail => {
     });
   }
 
-  const modules = listModulesByCourse(courseId).map((moduleItem) => ({
-    module: moduleItem,
-    lessons: listLessonsByModule(moduleItem.id),
-  }));
+  const modules = await listModulesByCourse(courseId);
+  const lessonsByModule = await Promise.all(
+    modules.map(async (moduleItem) => ({
+      module: moduleItem,
+      lessons: await listLessonsByModule(moduleItem.id),
+    }))
+  );
 
-  return { course, modules };
+  return { course, modules: lessonsByModule };
 };

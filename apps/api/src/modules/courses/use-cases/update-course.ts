@@ -10,7 +10,7 @@ type UpdateCourseInput = {
   level?: "beginner" | "intermediate" | "advanced";
 };
 
-export const updateCourseUseCase = (input: UpdateCourseInput): Course => {
+export const updateCourseUseCase = async (input: UpdateCourseInput): Promise<Course> => {
   if (
     input.title === undefined &&
     input.summary === undefined &&
@@ -25,7 +25,7 @@ export const updateCourseUseCase = (input: UpdateCourseInput): Course => {
     });
   }
 
-  const existing = findCourseById(input.courseId);
+  const existing = await findCourseById(input.courseId);
   if (!existing) {
     throw new AppError({
       status: 404,
@@ -35,7 +35,7 @@ export const updateCourseUseCase = (input: UpdateCourseInput): Course => {
     });
   }
 
-  const updated = updateCourse(input);
+  const updated = await updateCourse(input);
   if (!updated) {
     throw new AppError({
       status: 404,

@@ -25,13 +25,17 @@ export const setCache = <T>(key: string, value: T, ttlMs: number): void => {
   store.set(key, { value, expiresAt: now() + ttlMs });
 };
 
-export const getOrSetCache = <T>(key: string, ttlMs: number, loader: () => T): T => {
+export const getOrSetCache = async <T>(
+  key: string,
+  ttlMs: number,
+  loader: () => Promise<T> | T
+): Promise<T> => {
   const cached = getCache<T>(key);
   if (cached !== undefined) {
     return cached;
   }
 
-  const value = loader();
+  const value = await loader();
   setCache(key, value, ttlMs);
   return value;
 };

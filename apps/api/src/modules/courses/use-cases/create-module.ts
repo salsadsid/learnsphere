@@ -9,8 +9,8 @@ type CreateModuleInput = {
   order?: number;
 };
 
-export const createModuleUseCase = (input: CreateModuleInput): CourseModule => {
-  const course = findCourseById(input.courseId);
+export const createModuleUseCase = async (input: CreateModuleInput): Promise<CourseModule> => {
+  const course = await findCourseById(input.courseId);
   if (!course) {
     throw new AppError({
       status: 404,

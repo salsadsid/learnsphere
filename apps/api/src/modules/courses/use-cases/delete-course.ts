@@ -1,8 +1,8 @@
 import { AppError } from "../../../shared/errors";
 import type { Course } from "../domain/types";
-import { findCourseById, updateCourseStatus } from "../infra/course-store";
+import { deleteCourseById, findCourseById } from "../infra/course-store";
 
-export const unpublishCourseUseCase = async (courseId: string): Promise<Course> => {
+export const deleteCourseUseCase = async (courseId: string): Promise<Course> => {
   const existing = await findCourseById(courseId);
   if (!existing) {
     throw new AppError({
@@ -13,8 +13,8 @@ export const unpublishCourseUseCase = async (courseId: string): Promise<Course> 
     });
   }
 
-  const updated = await updateCourseStatus({ courseId, status: "draft" });
-  if (!updated) {
+  const result = await deleteCourseById(courseId);
+  if (!result.deleted) {
     throw new AppError({
       status: 404,
       title: "Not Found",
@@ -23,5 +23,5 @@ export const unpublishCourseUseCase = async (courseId: string): Promise<Course> 
     });
   }
 
-  return updated;
+  return existing;
 };

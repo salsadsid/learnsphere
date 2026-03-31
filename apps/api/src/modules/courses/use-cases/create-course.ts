@@ -10,7 +10,7 @@ type CreateCourseInput = {
   instructorId: string;
 };
 
-export const createCourseUseCase = (input: CreateCourseInput): Course => {
+export const createCourseUseCase = async (input: CreateCourseInput): Promise<Course> => {
   if (!input.title.trim()) {
     throw new AppError({
       status: 400,

@@ -7,12 +7,19 @@ type AppConfig = {
   nodeEnv: string;
   jwtSecret: string;
   webOrigin: string;
+  requestBodyLimit: string;
+  mongoUri?: string;
+  mongoDbName?: string;
   paymentWebhookSecret?: string;
   redisUrl?: string;
   adminEmail?: string;
   adminPassword?: string;
   p95TargetMs: number;
   metricsSampleSize: number;
+  rateLimitWindowMs: number;
+  rateLimitMax: number;
+  authRateLimitMax: number;
+  adminRateLimitMax: number;
   demoSeedEnabled: boolean;
   demoInstructorEmail?: string;
 };
@@ -31,8 +38,15 @@ export const config: AppConfig = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+  requestBodyLimit: process.env.REQUEST_BODY_LIMIT ?? "1mb",
+  ...(process.env.MONGODB_URI !== undefined ? { mongoUri: process.env.MONGODB_URI } : {}),
+  ...(process.env.MONGODB_DB !== undefined ? { mongoDbName: process.env.MONGODB_DB } : {}),
   p95TargetMs: parseNumber(process.env.P95_TARGET_MS, 400),
   metricsSampleSize: parseNumber(process.env.METRICS_SAMPLE_SIZE, 200),
+  rateLimitWindowMs: parseNumber(process.env.RATE_LIMIT_WINDOW_MS, 60_000),
+  rateLimitMax: parseNumber(process.env.RATE_LIMIT_MAX, 240),
+  authRateLimitMax: parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 60),
+  adminRateLimitMax: parseNumber(process.env.ADMIN_RATE_LIMIT_MAX, 180),
   ...(process.env.PAYMENT_WEBHOOK_SECRET !== undefined
     ? { paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET }
     : {}),

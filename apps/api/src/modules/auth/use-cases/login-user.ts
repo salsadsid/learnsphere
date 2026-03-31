@@ -11,10 +11,22 @@ const invalidCredentialsError = () =>
     type: "https://httpstatuses.com/401",
   });
 
+const inactiveAccountError = () =>
+  new AppError({
+    status: 403,
+    title: "Forbidden",
+    detail: "Account is deactivated.",
+    type: "https://httpstatuses.com/403",
+  });
+
 export const loginUser = async (email: string, password: string): Promise<AuthUser> => {
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
   if (!user) {
     throw invalidCredentialsError();
+  }
+
+  if (!user.isActive) {
+    throw inactiveAccountError();
   }
 
   const matches = await bcrypt.compare(password, user.passwordHash);

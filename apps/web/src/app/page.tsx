@@ -1,111 +1,172 @@
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import { GlassCard, PageShell, Pill, SectionHeading } from "@/shared/ui";
+
+const quickStats = [
+  { label: "Active cohorts", value: "14", trend: "+2" },
+  { label: "Learners online", value: "2.4k", trend: "+18%" },
+  { label: "Completion rate", value: "86%", trend: "+9%" },
+];
+
 export default function Home() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-16 px-6 py-16">
+    <PageShell maxWidth="max-w-7xl" className="gap-16">
       <section className="grid gap-12 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-        <div className="space-y-6 fade-up">
-          <p className="inline-flex items-center gap-2 rounded-full border border-slate-900/10 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-slate-600">
-            Build your learning sphere
-          </p>
-          <h1 className="text-4xl font-semibold leading-tight text-slate-900 md:text-5xl font-[var(--font-display)]">
-            A focused workspace for courses, cohorts, and measurable momentum.
+        <div className="space-y-6">
+          <Pill label="Contest-grade edutech" tone="accent" />
+          <h1 className="text-4xl font-semibold leading-tight text-slate-900 md:text-6xl font-[var(--font-display)]">
+            Build learning journeys that feel like a product launch.
           </h1>
           <p className="text-lg leading-7 text-slate-600">
-            LearnSphere blends structured content with progress insights, so instructors
-            can design journeys and learners can stay accountable without noise.
+            LearnSphere combines cinematic course experiences with precision progress
+            tracking. Learners stay engaged, instructors ship faster, and admins get
+            clarity at scale.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
-            <button className="h-12 rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800">
-              Start a cohort
-            </button>
-            <button className="h-12 rounded-full border border-slate-900/15 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-900/30">
+            <Link
+              href="/courses"
+              className="h-12 rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
               Explore courses
-            </button>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="h-12 rounded-full border border-slate-900/15 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-900/30"
+            >
+              Open dashboard
+            </Link>
           </div>
         </div>
-        <div className="rounded-3xl border border-slate-900/10 bg-white/80 p-6 shadow-xl fade-up-delay">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Live cohort</p>
-              <p className="text-lg font-semibold text-slate-900">Product Thinking Lab</p>
-              <p className="text-sm text-slate-500">Next session: Wed 18:00</p>
+
+        <GlassCard className="space-y-5 rise-in" style={{ "--delay": "0.1s" } as CSSProperties}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                Command center
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+                Momentum Lab
+              </h3>
+              <p className="text-sm text-slate-500">Live cohort streaming now</p>
             </div>
-            <div className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Focus metric</p>
-              <p className="text-lg font-semibold text-slate-900">78% completion</p>
-              <p className="text-sm text-slate-500">+12% from last week</p>
-            </div>
-            <div className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Next checkpoint</p>
-              <p className="text-lg font-semibold text-slate-900">Customer discovery sprint</p>
-              <p className="text-sm text-slate-500">Unlocks in 3 days</p>
-            </div>
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
+              4x
+            </span>
           </div>
-        </div>
+          <div className="grid gap-4">
+            {quickStats.map((stat, index) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-slate-900/10 bg-white/80 px-4 py-3 rise-in"
+                style={{ "--delay": `${0.1 + index * 0.08}s` } as CSSProperties}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
+                    {stat.label}
+                  </p>
+                  <span className="text-xs text-emerald-600">{stat.trend}</span>
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
       </section>
 
-      <section id="courses" className="grid gap-6 md:grid-cols-3">
-        {[
-          {
-            title: "Course Architecture",
-            body: "Map lessons into outcomes with repeatable templates.",
-          },
-          {
-            title: "Mentor Touchpoints",
-            body: "Blend async content with human check-ins and feedback.",
-          },
-          {
-            title: "Progress Signals",
-            body: "Surface momentum with completion, time-on-task, and trends.",
-          },
-        ].map((item) => (
-          <div
-            key={item.title}
-            className="rounded-3xl border border-slate-900/10 bg-white/70 p-6 shadow-sm transition hover:-translate-y-1"
-          >
-            <h3 className="text-xl font-semibold text-slate-900">{item.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
-          </div>
-        ))}
-      </section>
-
-      <section id="progress" className="rounded-3xl border border-slate-900/10 bg-white/80 p-8 shadow-sm">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Progress cockpit</p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-900 font-[var(--font-display)]">
-              Turn check-ins into a learning rhythm.
-            </h2>
-          </div>
-          <button className="h-12 rounded-full bg-teal-600 px-6 text-sm font-semibold text-white transition hover:bg-teal-500">
-            View analytics
-          </button>
-        </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <section id="experience" className="grid gap-8">
+        <SectionHeading
+          eyebrow="The LearnSphere experience"
+          title="Every touchpoint looks and feels premium"
+          description="A tech-forward UX system that adapts to students, instructors, and admins."
+        />
+        <div className="grid gap-6 md:grid-cols-3">
           {[
-            "Weekly heartbeat summaries",
-            "Mentor notes alongside metrics",
-            "Auto-generated action plans",
-          ].map((item) => (
-            <div key={item} className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3">
-              <p className="text-sm text-slate-600">{item}</p>
-            </div>
+            {
+              title: "Adaptive course paths",
+              body: "Personalized next steps based on pace, quiz results, and activity.",
+            },
+            {
+              title: "Studio-grade lessons",
+              body: "Video, PDFs, links, and quizzes delivered in a single immersive player.",
+            },
+            {
+              title: "Momentum analytics",
+              body: "Live dashboards that highlight friction before learners drop off.",
+            },
+          ].map((item, index) => (
+            <GlassCard
+              key={item.title}
+              className="h-full rise-in"
+              style={{ "--delay": `${index * 0.1}s` } as CSSProperties}
+            >
+              <h3 className="text-xl font-semibold text-slate-900">{item.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
+            </GlassCard>
           ))}
         </div>
       </section>
 
-      <section id="community" className="rounded-3xl border border-dashed border-slate-900/15 bg-white/60 p-10 text-center">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Community</p>
-        <h2 className="mt-3 text-3xl font-semibold text-slate-900 font-[var(--font-display)]">
-          Keep cohorts in sync, even between sessions.
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          Share updates, celebrate wins, and keep lesson resources accessible without
-          losing the human touch.
-        </p>
-        <button className="mt-6 h-12 rounded-full border border-slate-900/15 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-900/30">
-          Join a preview cohort
-        </button>
+      <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-start">
+        <GlassCard className="space-y-6">
+          <SectionHeading
+            eyebrow="Live learning cadence"
+            title="Turn progress into a daily signal"
+            description="Keep teams aligned with auto-generated highlights and next-step prompts."
+          />
+          <div className="grid gap-3">
+            {[
+              "Daily momentum summary for learners",
+              "Instructor highlights with watch-time deltas",
+              "Quiz mastery signals that auto-unlock modules",
+            ].map((item) => (
+              <div key={item} className="rounded-2xl border border-slate-900/10 bg-white/80 px-4 py-3">
+                <p className="text-sm text-slate-600">{item}</p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        <div className="space-y-6">
+          <GlassCard className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Cohort pulse</p>
+            <h3 className="text-2xl font-semibold text-slate-900">Week 3 cadence</h3>
+            <p className="text-sm text-slate-600">
+              92 learners active, 74% completion, 12% velocity gain this sprint.
+            </p>
+          </GlassCard>
+          <GlassCard className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Next launch</p>
+            <h3 className="text-2xl font-semibold text-slate-900">React Fundamentals</h3>
+            <p className="text-sm text-slate-600">
+              Live cohort opens in 2 days. Invite your team or enroll solo.
+            </p>
+            <Link
+              href="/courses"
+              className="inline-flex h-10 items-center rounded-full bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.3em] text-white"
+            >
+              View catalog
+            </Link>
+          </GlassCard>
+        </div>
       </section>
-    </div>
+
+      <section id="community" className="grid gap-6">
+        <GlassCard className="text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Community runway</p>
+          <h2 className="mt-3 text-3xl font-semibold text-slate-900 font-[var(--font-display)]">
+            Celebrate wins, share momentum, keep cohorts aligned.
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600">
+            Integrated spaces for shoutouts, project demos, and async office hours.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-6 inline-flex h-12 items-center rounded-full border border-slate-900/15 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-900/30"
+          >
+            Join the cohort
+          </Link>
+        </GlassCard>
+      </section>
+    </PageShell>
   );
 }

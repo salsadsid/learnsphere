@@ -7,8 +7,8 @@ import {
   findCourseById,
 } from "../infra/course-store";
 
-export const publishCourseUseCase = (courseId: string): Course => {
-  const course = findCourseById(courseId);
+export const publishCourseUseCase = async (courseId: string): Promise<Course> => {
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -18,8 +18,9 @@ export const publishCourseUseCase = (courseId: string): Course => {
     });
   }
 
-  const moduleCount = listModulesByCourse(courseId).length;
-  const lessonCount = countLessonsByCourse(courseId);
+  const modules = await listModulesByCourse(courseId);
+  const moduleCount = modules.length;
+  const lessonCount = await countLessonsByCourse(courseId);
 
   if (moduleCount === 0 || lessonCount === 0) {
     throw new AppError({
@@ -30,7 +31,7 @@ export const publishCourseUseCase = (courseId: string): Course => {
     });
   }
 
-  const updated = updateCourseStatus({ courseId, status: "published" });
+  const updated = await updateCourseStatus({ courseId, status: "published" });
   if (!updated) {
     throw new AppError({
       status: 404,

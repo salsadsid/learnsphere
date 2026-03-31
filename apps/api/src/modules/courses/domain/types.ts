@@ -8,6 +8,27 @@ export type CourseStatus = "draft" | "published";
 
 export type CourseLevel = "beginner" | "intermediate" | "advanced";
 
+export type LessonType = "video" | "link" | "text" | "pdf" | "quiz";
+
+export type LessonQuizOption = {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+};
+
+export type LessonQuizQuestion = {
+  id: string;
+  prompt: string;
+  options: LessonQuizOption[];
+  multipleCorrect?: boolean;
+};
+
+export type LessonQuiz = {
+  title?: string;
+  passingScore?: number;
+  questions: LessonQuizQuestion[];
+};
+
 export type Course = {
   id: CourseId;
   title: string;
@@ -35,7 +56,10 @@ export type Lesson = {
   courseId: CourseId;
   moduleId: ModuleId;
   title: string;
+  type: LessonType;
   content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
   order: number;
   durationMinutes?: number;
   createdAt: Date;

@@ -27,12 +27,12 @@ import type { CheckoutInput, WebhookInput } from "./validation";
 const MOCK_AMOUNT_CENTS = 9900;
 const MOCK_CURRENCY = "usd";
 
-export const createCheckoutService = (
+export const createCheckoutService = async (
   user: AuthUser,
   input: CheckoutInput,
   idempotencyKey: string
-): CreateCheckoutResponseDto => {
-  const course = findCourseById(input.courseId);
+): Promise<CreateCheckoutResponseDto> => {
+  const course = await findCourseById(input.courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -84,11 +84,11 @@ export const createCheckoutService = (
   };
 };
 
-export const getPaymentStatusService = (
+export const getPaymentStatusService = async (
   user: AuthUser,
   courseId: string
-): PaymentStatusResponseDto => {
-  const course = findCourseById(courseId);
+): Promise<PaymentStatusResponseDto> => {
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -114,8 +114,10 @@ export const getPaymentStatusService = (
   };
 };
 
-const toPaymentHistoryItem = (payment: ReturnType<typeof listPaymentsByUser>[number]): PaymentHistoryItemDto => {
-  const course = findCourseById(payment.courseId);
+const toPaymentHistoryItem = async (
+  payment: ReturnType<typeof listPaymentsByUser>[number]
+): Promise<PaymentHistoryItemDto> => {
+  const course = await findCourseById(payment.courseId);
 
   return {
     paymentId: payment.id,
@@ -130,8 +132,10 @@ const toPaymentHistoryItem = (payment: ReturnType<typeof listPaymentsByUser>[num
   };
 };
 
-export const listPaymentHistoryService = (user: AuthUser): PaymentHistoryResponseDto => ({
-  items: listPaymentsByUser(user.id).map(toPaymentHistoryItem),
+export const listPaymentHistoryService = async (
+  user: AuthUser
+): Promise<PaymentHistoryResponseDto> => ({
+  items: await Promise.all(listPaymentsByUser(user.id).map(toPaymentHistoryItem)),
 });
 
 export const verifyWebhookSignature = (payload: unknown, signature: string | undefined): void => {
@@ -169,7 +173,9 @@ export const verifyWebhookSignature = (payload: unknown, signature: string | und
   }
 };
 
-export const handleWebhookService = (input: WebhookInput): PaymentWebhookResponseDto => {
+export const handleWebhookService = async (
+  input: WebhookInput
+): Promise<PaymentWebhookResponseDto> => {
   const shouldProcess = recordWebhookEvent(input.eventId, input.type);
   if (!shouldProcess) {
     return { processed: false };
@@ -191,7 +197,10 @@ export const handleWebhookService = (input: WebhookInput): PaymentWebhookRespons
 
   if (input.type === "payment.succeeded") {
     updatePaymentStatus(payment, "paid");
-    const enrollment = createEnrollment({ userId: input.userId, courseId: input.courseId });
+    const enrollment = await createEnrollment({
+      userId: input.userId,
+      courseId: input.courseId,
+    });
     if (enrollment.created) {
       enqueueEnrollmentEmail({ userId: input.userId, courseId: input.courseId });
     }

@@ -204,5 +204,8 @@ export const authPatchJson = async <T>(
   options: RequestOptions = {}
 ): Promise<ApiResponse<T>> => requestJson<T>(path, { ...options, method: "PATCH", body, auth: true });
 
+export const authDeleteJson = async <T>(path: string): Promise<ApiResponse<T>> =>
+  requestJson<T>(path, { method: "DELETE", auth: true });
+
 export const authGetText = async (path: string): Promise<ApiResponse<string>> =>
   requestText(path, { method: "GET", auth: true });

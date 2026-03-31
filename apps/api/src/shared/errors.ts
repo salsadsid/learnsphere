@@ -7,6 +7,8 @@ type ProblemDetails = {
   detail?: string;
   instance?: string;
   errors?: string[];
+  requestId?: string;
+  timestamp?: string;
 };
 
 type ProblemInit = Omit<ProblemDetails, "type"> & { type?: string };
@@ -45,20 +47,36 @@ export class AppError extends Error {
 
 const isAppError = (error: unknown): error is AppError => error instanceof AppError;
 
-const createProblemDetails = ({ type, title, status, detail, instance, errors }: ProblemInit): ProblemDetails => ({
+const createProblemDetails = ({
+  type,
+  title,
+  status,
+  detail,
+  instance,
+  errors,
+  requestId,
+  timestamp,
+}: ProblemInit & { requestId?: string; timestamp?: string }): ProblemDetails => ({
   type: type ?? DEFAULT_PROBLEM_TYPE,
   title,
   status,
   ...(detail ? { detail } : {}),
   ...(instance ? { instance } : {}),
   ...(errors && errors.length > 0 ? { errors } : {}),
+  ...(requestId ? { requestId } : {}),
+  ...(timestamp ? { timestamp } : {}),
 });
 
 const sendProblem = (res: Response, problem: ProblemDetails): Response =>
   res.status(problem.status).type(PROBLEM_CONTENT_TYPE).json(problem);
 
-export const notFoundHandler = (req: Request, res: Response): Response =>
-  sendProblem(
+type RequestWithId = Request & { requestId?: string };
+
+const getRequestId = (req: RequestWithId): string | undefined => req.requestId;
+
+export const notFoundHandler = (req: RequestWithId, res: Response): Response => {
+  const requestId = getRequestId(req);
+  return sendProblem(
     res,
     createProblemDetails({
       status: 404,
@@ -66,12 +84,15 @@ export const notFoundHandler = (req: Request, res: Response): Response =>
       detail: `Route ${req.method} ${req.path} not found.`,
       type: "https://httpstatuses.com/404",
       instance: req.originalUrl,
+      ...(requestId ? { requestId } : {}),
+      timestamp: new Date().toISOString(),
     })
   );
+};
 
 export const errorHandler = (
   error: unknown,
-  req: Request,
+  req: RequestWithId,
   res: Response,
   _next: NextFunction
 ): Response => {
@@ -80,11 +101,14 @@ export const errorHandler = (
   }
 
   if (isAppError(error)) {
+    const requestId = getRequestId(req);
     const problem = createProblemDetails({
       status: error.status,
       title: error.title,
       type: error.type,
       instance: req.originalUrl,
+      ...(requestId ? { requestId } : {}),
+      timestamp: new Date().toISOString(),
       ...(error.detail !== undefined ? { detail: error.detail } : {}),
       ...(error.errors !== undefined ? { errors: error.errors } : {}),
     });
@@ -92,6 +116,7 @@ export const errorHandler = (
     return sendProblem(res, problem);
   }
 
+  const requestId = getRequestId(req);
   return sendProblem(
     res,
     createProblemDetails({
@@ -100,6 +125,8 @@ export const errorHandler = (
       detail: "An unexpected error occurred.",
       type: "https://httpstatuses.com/500",
       instance: req.originalUrl,
+      ...(requestId ? { requestId } : {}),
+      timestamp: new Date().toISOString(),
     })
   );
 };

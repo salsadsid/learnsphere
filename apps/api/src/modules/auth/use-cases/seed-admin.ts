@@ -28,7 +28,7 @@ export const seedAdmin = async ({ email, password }: SeedAdminInput): Promise<vo
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    registerUser({ email, passwordHash, role: "admin" });
+    await registerUser({ email, passwordHash, role: "admin" });
     console.log(`Admin account seeded for ${email}.`);
   } catch (error) {
     if (error instanceof AppError && error.status === 409) {

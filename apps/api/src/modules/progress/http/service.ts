@@ -1,7 +1,12 @@
 import { findCourseById, listLessonsByCourse } from "../../courses/infra/course-store";
 import { findUserById } from "../../auth/infra/user-store";
 import { listEnrollmentsByUser } from "../../enrollment/infra/enrollment-store";
-import type { LessonCompletionRecord, ProgressRecord } from "../domain/types";
+import type {
+  LessonCompletionRecord,
+  ProgressRecord,
+  VideoEventRecord,
+  WatchSnapshotRecord,
+} from "../domain/types";
 import {
   addVideoEvent,
   addWatchSnapshot,
@@ -54,7 +59,7 @@ const toCompletionResponse = (
   completedAt: record.completedAt.toISOString(),
 });
 
-const toSnapshotResponse = (record: ReturnType<typeof addWatchSnapshot>): WatchSnapshotResponseDto => ({
+const toSnapshotResponse = (record: WatchSnapshotRecord): WatchSnapshotResponseDto => ({
   courseId: record.courseId,
   lessonId: record.lessonId,
   positionSeconds: record.positionSeconds,
@@ -62,7 +67,7 @@ const toSnapshotResponse = (record: ReturnType<typeof addWatchSnapshot>): WatchS
   recordedAt: record.recordedAt.toISOString(),
 });
 
-const toEventResponse = (record: ReturnType<typeof addVideoEvent>): VideoEventResponseDto => ({
+const toEventResponse = (record: VideoEventRecord): VideoEventResponseDto => ({
   courseId: record.courseId,
   lessonId: record.lessonId,
   eventType: record.eventType,
@@ -71,18 +76,19 @@ const toEventResponse = (record: ReturnType<typeof addVideoEvent>): VideoEventRe
   ...(record.deviceId !== undefined ? { deviceId: record.deviceId } : {}),
 });
 
-export const getVideoProgressService = (
+export const getVideoProgressService = async (
   userId: string,
   videoId: string
-): ProgressResponseDto | null => toProgressResponse(findProgress(userId, videoId));
+): Promise<ProgressResponseDto | null> =>
+  toProgressResponse(await findProgress(userId, videoId));
 
-export const saveVideoProgressService = (
+export const saveVideoProgressService = async (
   userId: string,
   input: SaveProgressInput
-): SaveProgressResponseDto => {
+): Promise<SaveProgressResponseDto> => {
   const clientUpdatedAt = input.clientUpdatedAt ? new Date(input.clientUpdatedAt) : undefined;
 
-  const result = saveProgress({
+  const result = await saveProgress({
     userId,
     videoId: input.videoId,
     positionSeconds: input.positionSeconds,
@@ -100,11 +106,11 @@ export const saveVideoProgressService = (
   };
 };
 
-export const markLessonCompleteService = (
+export const markLessonCompleteService = async (
   userId: string,
   input: LessonCompletionInput
-): LessonCompletionResponseDto => {
-  const record = markLessonComplete({
+): Promise<LessonCompletionResponseDto> => {
+  const record = await markLessonComplete({
     userId,
     courseId: input.courseId,
     lessonId: input.lessonId,
@@ -115,57 +121,55 @@ export const markLessonCompleteService = (
   return toCompletionResponse(record);
 };
 
-export const listLessonCompletionsService = (
+export const listLessonCompletionsService = async (
   userId: string,
   courseId: string
-): LessonCompletionResponseDto[] =>
-  listLessonCompletionsByCourse(userId, courseId).map(toCompletionResponse);
+): Promise<LessonCompletionResponseDto[]> =>
+  (await listLessonCompletionsByCourse(userId, courseId)).map(toCompletionResponse);
 
-export const addWatchSnapshotService = (
+export const addWatchSnapshotService = async (
   userId: string,
   input: WatchSnapshotInput
-): WatchSnapshotResponseDto => {
-  const response = toSnapshotResponse(
-    addWatchSnapshot({
-      userId,
-      courseId: input.courseId,
-      lessonId: input.lessonId,
-      positionSeconds: input.positionSeconds,
-      durationSeconds: input.durationSeconds,
-    })
-  );
+): Promise<WatchSnapshotResponseDto> => {
+  const record = await addWatchSnapshot({
+    userId,
+    courseId: input.courseId,
+    lessonId: input.lessonId,
+    positionSeconds: input.positionSeconds,
+    durationSeconds: input.durationSeconds,
+  });
+  const response = toSnapshotResponse(record);
 
   clearCacheByPrefix(`progress:studentSummary:${userId}`);
 
   return response;
 };
 
-export const addVideoEventService = (
+export const addVideoEventService = async (
   userId: string,
   input: VideoEventInput
-): VideoEventResponseDto => {
-  const response = toEventResponse(
-    addVideoEvent({
-      userId,
-      courseId: input.courseId,
-      lessonId: input.lessonId,
-      eventType: input.eventType,
-      ...(input.positionSeconds !== undefined ? { positionSeconds: input.positionSeconds } : {}),
-      ...(input.deviceId !== undefined ? { deviceId: input.deviceId } : {}),
-    })
-  );
+): Promise<VideoEventResponseDto> => {
+  const record = await addVideoEvent({
+    userId,
+    courseId: input.courseId,
+    lessonId: input.lessonId,
+    eventType: input.eventType,
+    ...(input.positionSeconds !== undefined ? { positionSeconds: input.positionSeconds } : {}),
+    ...(input.deviceId !== undefined ? { deviceId: input.deviceId } : {}),
+  });
+  const response = toEventResponse(record);
 
   clearCacheByPrefix(`progress:studentSummary:${userId}`);
 
   return response;
 };
 
-export const getCourseProgressService = (
+export const getCourseProgressService = async (
   userId: string,
   courseId: string
-): CourseProgressResponseDto => {
-  const lessons = listLessonsByCourse(courseId);
-  const completions = listLessonCompletionsByCourse(userId, courseId);
+): Promise<CourseProgressResponseDto> => {
+  const lessons = await listLessonsByCourse(courseId);
+  const completions = await listLessonCompletionsByCourse(userId, courseId);
   const completedLessonIds = completions.map((record) => record.lessonId);
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter((lesson) =>
@@ -182,14 +186,14 @@ export const getCourseProgressService = (
   };
 };
 
-export const getInstructorCourseProgressService = (
+export const getInstructorCourseProgressService = async (
   courseId: string
-): InstructorCourseProgressResponseDto => {
-  const lessons = listLessonsByCourse(courseId);
+): Promise<InstructorCourseProgressResponseDto> => {
+  const lessons = await listLessonsByCourse(courseId);
   const lessonIds = new Set(lessons.map((lesson) => lesson.id));
   const totalLessons = lessons.length;
-  const completions = listLessonCompletionsByCourseAll(courseId);
-  const snapshots = listWatchSnapshotsByCourse(courseId);
+  const completions = await listLessonCompletionsByCourseAll(courseId);
+  const snapshots = await listWatchSnapshotsByCourse(courseId);
   const students = new Map<string, {
     completedLessonIds: Set<string>;
     watchTimeByLesson: Map<string, number>;
@@ -237,8 +241,8 @@ export const getInstructorCourseProgressService = (
         : student.lastActivityAt;
   }
 
-  const studentSummaries: StudentCourseProgressDto[] = Array.from(students.entries()).map(
-    ([userId, data]) => {
+  const studentSummaries: StudentCourseProgressDto[] = await Promise.all(
+    Array.from(students.entries()).map(async ([userId, data]) => {
       const completedLessons = data.completedLessonIds.size;
       const percentComplete =
         totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
@@ -246,7 +250,7 @@ export const getInstructorCourseProgressService = (
       for (const value of data.watchTimeByLesson.values()) {
         watchTimeSeconds += value;
       }
-      const user = findUserById(userId);
+      const user = await findUserById(userId);
       return {
         userId,
         completedLessons,
@@ -256,7 +260,7 @@ export const getInstructorCourseProgressService = (
         ...(user?.email ? { email: user.email } : {}),
         ...(data.lastActivityAt ? { lastActivityAt: data.lastActivityAt.toISOString() } : {}),
       };
-    }
+    })
   );
 
   studentSummaries.sort((a, b) => {
@@ -306,18 +310,18 @@ const STUDENT_DASHBOARD_TTL_MS = 30_000;
 const buildStudentSummaryCacheKey = (userId: string): string =>
   `progress:studentSummary:${userId}`;
 
-const buildStudentCourseSummary = (
+const buildStudentCourseSummary = async (
   userId: string,
   courseId: string
-): StudentCourseSummaryDto | null => {
-  const course = findCourseById(courseId);
+): Promise<StudentCourseSummaryDto | null> => {
+  const course = await findCourseById(courseId);
   if (!course) {
     return null;
   }
 
-  const lessons = listLessonsByCourse(courseId);
-  const completions = listLessonCompletionsByCourse(userId, courseId);
-  const snapshots = listWatchSnapshotsByCourseAndUser(courseId, userId);
+  const lessons = await listLessonsByCourse(courseId);
+  const completions = await listLessonCompletionsByCourse(userId, courseId);
+  const snapshots = await listWatchSnapshotsByCourseAndUser(courseId, userId);
   const completedLessonIds = new Set(completions.map((record) => record.lessonId));
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length;
@@ -358,15 +362,17 @@ const buildStudentCourseSummary = (
   };
 };
 
-export const getStudentDashboardService = (userId: string): StudentDashboardResponseDto => {
+export const getStudentDashboardService = async (
+  userId: string
+): Promise<StudentDashboardResponseDto> => {
   const cacheKey = buildStudentSummaryCacheKey(userId);
 
-  return getOrSetCache(cacheKey, STUDENT_DASHBOARD_TTL_MS, () => {
-    const enrollments = listEnrollmentsByUser(userId);
+  return getOrSetCache(cacheKey, STUDENT_DASHBOARD_TTL_MS, async () => {
+    const enrollments = await listEnrollmentsByUser(userId);
     const courses: StudentCourseSummaryDto[] = [];
 
     for (const enrollment of enrollments) {
-      const summary = buildStudentCourseSummary(userId, enrollment.courseId);
+      const summary = await buildStudentCourseSummary(userId, enrollment.courseId);
       if (summary) {
         courses.push(summary);
       }

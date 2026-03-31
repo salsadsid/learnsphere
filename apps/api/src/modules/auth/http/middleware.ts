@@ -19,7 +19,19 @@ const unauthorizedError = () =>
     type: "https://httpstatuses.com/401",
   });
 
-export const requireAuth = (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
+const inactiveAccountError = () =>
+  new AppError({
+    status: 403,
+    title: "Forbidden",
+    detail: "Account is deactivated.",
+    type: "https://httpstatuses.com/403",
+  });
+
+export const requireAuth = async (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     next(unauthorizedError());
@@ -35,9 +47,14 @@ export const requireAuth = (req: AuthenticatedRequest, _res: Response, next: Nex
       return;
     }
 
-    const user = findUserById(decoded.sub);
+    const user = await findUserById(decoded.sub);
     if (!user) {
       next(unauthorizedError());
+      return;
+    }
+
+    if (!user.isActive) {
+      next(inactiveAccountError());
       return;
     }
 

@@ -1,9 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f1e8;
-  --foreground: #0f172a;
-  --ink: #1f2937;
+  --background: #f7f7f9;
+  --foreground: #0b1220;
+  --ink: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f6;
+  --stroke: rgba(15, 23, 42, 0.1);
+  --accent: #1f2a44;
+  --accent-2: #3b82f6;
+  --accent-3: #38bdf8;
+  --accent-4: #22c55e;
 }
 
 @theme inline {
@@ -19,8 +26,33 @@ body {
   font-family: var(--font-sans), "Space Grotesk", sans-serif;
 }
 
+.bg-signal {
+  background:
+    radial-gradient(1200px 850px at 12% -18%, rgba(59, 130, 246, 0.12), transparent 60%),
+    radial-gradient(900px 720px at 92% 0%, rgba(56, 189, 248, 0.1), transparent 60%),
+    radial-gradient(900px 720px at 65% 92%, rgba(148, 163, 184, 0.12), transparent 60%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(244, 246, 249, 0.85) 55%, rgba(248, 250, 252, 0.8));
+}
+
+.grid-halo {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+
+.rise-in {
+  animation: rise-in 0.9s ease-out both;
+  animation-delay: var(--delay, 0s);
+}
+
 .float-slow {
   animation: float-slow 18s ease-in-out infinite;
+}
+
+.pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
 }
 
 .fade-up {
@@ -29,6 +61,19 @@ body {
 
 .fade-up-delay {
   animation: fade-up 0.8s ease-out 0.15s both;
+}
+
+.cinema-in {
+  animation: cinema-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--delay, 0s);
+}
+
+.sweep-in {
+  animation: sweep-in 1.2s ease-out both;
+}
+
+.orbit-slow {
+  animation: orbit-slow 24s ease-in-out infinite;
 }
 
 @keyframes float-slow {
@@ -41,6 +86,27 @@ body {
   }
 }
 
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes fade-up {
   0% {
     opacity: 0;
@@ -49,5 +115,54 @@ body {
   100% {
     opacity: 1;
     transform: translateY(0px);
+  }
+}
+
+@keyframes cinema-in {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes sweep-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes orbit-slow {
+  0% {
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-24px) translateX(16px) scale(1.02);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .float-slow,
+  .pulse-soft,
+  .fade-up,
+  .fade-up-delay,
+  .cinema-in,
+  .sweep-in,
+  .orbit-slow {
+    animation: none !important;
   }
 }

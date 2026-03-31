@@ -15,7 +15,7 @@ type AuthenticatedRequest = Request & { user?: AuthUser };
 
 export const enrollmentRouter = Router();
 
-enrollmentRouter.get("/", requireAuth, (req: AuthenticatedRequest, res, next) => {
+enrollmentRouter.get("/", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     if (!req.user) {
       throw new AppError({
@@ -26,13 +26,13 @@ enrollmentRouter.get("/", requireAuth, (req: AuthenticatedRequest, res, next) =>
       });
     }
 
-    res.json(listEnrollmentsService(req.user));
+    res.json(await listEnrollmentsService(req.user));
   } catch (error) {
     next(error);
   }
 });
 
-enrollmentRouter.get("/:courseId", requireAuth, (req: AuthenticatedRequest, res, next) => {
+enrollmentRouter.get("/:courseId", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateCourseParamInput(req.params);
     if (!validation.isValid || !validation.data) {
@@ -45,7 +45,7 @@ enrollmentRouter.get("/:courseId", requireAuth, (req: AuthenticatedRequest, res,
       });
     }
 
-    const response: EnrollmentStatusResponseDto = getEnrollmentStatusService(
+    const response: EnrollmentStatusResponseDto = await getEnrollmentStatusService(
       validation.data.courseId,
       req.user
     );
@@ -56,7 +56,7 @@ enrollmentRouter.get("/:courseId", requireAuth, (req: AuthenticatedRequest, res,
   }
 });
 
-enrollmentRouter.post("/", requireAuth, (req: AuthenticatedRequest, res, next) => {
+enrollmentRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateEnrollInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -78,7 +78,7 @@ enrollmentRouter.post("/", requireAuth, (req: AuthenticatedRequest, res, next) =
       });
     }
 
-    const { response, created } = enrollUserService(req.user, validation.data.courseId);
+    const { response, created } = await enrollUserService(req.user, validation.data.courseId);
     const status = created ? 201 : 200;
     res.status(status).json(response as EnrollmentResponseDto);
   } catch (error) {

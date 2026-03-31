@@ -1,18 +1,21 @@
 import { AppError } from "../../../shared/errors";
-import type { Lesson } from "../domain/types";
+import type { Lesson, LessonQuiz, LessonType } from "../domain/types";
 import { createLesson, findCourseById, findModuleById } from "../infra/course-store";
 
 type CreateLessonInput = {
   courseId: string;
   moduleId: string;
   title: string;
+  type: LessonType;
   content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
   order?: number;
   durationMinutes?: number;
 };
 
-export const createLessonUseCase = (input: CreateLessonInput): Lesson => {
-  const course = findCourseById(input.courseId);
+export const createLessonUseCase = async (input: CreateLessonInput): Promise<Lesson> => {
+  const course = await findCourseById(input.courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -22,7 +25,7 @@ export const createLessonUseCase = (input: CreateLessonInput): Lesson => {
     });
   }
 
-  const moduleItem = findModuleById(input.moduleId);
+  const moduleItem = await findModuleById(input.moduleId);
   if (!moduleItem || moduleItem.courseId !== input.courseId) {
     throw new AppError({
       status: 404,

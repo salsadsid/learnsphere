@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
+import mongoose, { Schema } from "mongoose";
 import type { Enrollment } from "../domain/types";
-
-const enrollments: Enrollment[] = [];
 
 type CreateEnrollmentInput = {
   userId: string;
@@ -13,19 +12,51 @@ type CreateEnrollmentResult = {
   created: boolean;
 };
 
-export const findEnrollment = (userId: string, courseId: string): Enrollment | undefined =>
-  enrollments.find(
-    (enrollment) => enrollment.userId === userId && enrollment.courseId === courseId
-  );
+const EnrollmentSchema = new Schema<Enrollment>(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    courseId: { type: String, required: true, index: true },
+    createdAt: { type: Date, required: true },
+  },
+  { versionKey: false }
+);
 
-export const listEnrollmentsByUser = (userId: string): Enrollment[] =>
-  enrollments.filter((enrollment) => enrollment.userId === userId);
+EnrollmentSchema.index({ userId: 1, courseId: 1 }, { unique: true });
 
-export const listEnrollmentsByCourse = (courseId: string): Enrollment[] =>
-  enrollments.filter((enrollment) => enrollment.courseId === courseId);
+const EnrollmentModel =
+  (mongoose.models.Enrollment as mongoose.Model<Enrollment> | undefined) ??
+  mongoose.model<Enrollment>("Enrollment", EnrollmentSchema);
 
-export const createEnrollment = (input: CreateEnrollmentInput): CreateEnrollmentResult => {
-  const existing = findEnrollment(input.userId, input.courseId);
+export const findEnrollment = async (
+  userId: string,
+  courseId: string
+): Promise<Enrollment | undefined> => {
+  const enrollment = await EnrollmentModel.findOne({ userId, courseId })
+    .select("-__v -_id")
+    .lean<Enrollment>()
+    .exec();
+  return enrollment ?? undefined;
+};
+
+export const listEnrollmentsByUser = async (userId: string): Promise<Enrollment[]> =>
+  EnrollmentModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .select("-__v -_id")
+    .lean<Enrollment[]>()
+    .exec();
+
+export const listEnrollmentsByCourse = async (courseId: string): Promise<Enrollment[]> =>
+  EnrollmentModel.find({ courseId })
+    .sort({ createdAt: -1 })
+    .select("-__v -_id")
+    .lean<Enrollment[]>()
+    .exec();
+
+export const createEnrollment = async (
+  input: CreateEnrollmentInput
+): Promise<CreateEnrollmentResult> => {
+  const existing = await findEnrollment(input.userId, input.courseId);
   if (existing) {
     return { enrollment: existing, created: false };
   }
@@ -37,9 +68,17 @@ export const createEnrollment = (input: CreateEnrollmentInput): CreateEnrollment
     createdAt: new Date(),
   };
 
-  enrollments.push(enrollment);
-  return { enrollment, created: true };
+  try {
+    await EnrollmentModel.create(enrollment);
+    return { enrollment, created: true };
+  } catch (error) {
+    const retry = await findEnrollment(input.userId, input.courseId);
+    if (retry) {
+      return { enrollment: retry, created: false };
+    }
+    throw error;
+  }
 };
 
-export const isEnrolled = (userId: string, courseId: string): boolean =>
-  findEnrollment(userId, courseId) !== undefined;
+export const isEnrolled = async (userId: string, courseId: string): Promise<boolean> =>
+  (await findEnrollment(userId, courseId)) !== undefined;

@@ -45,12 +45,12 @@ export const registerHandler = async (req: Request, res: Response, next: NextFun
     }
 
     const passwordHash = await bcrypt.hash(validation.data.password, 10);
-    const user = registerUser({
+    const user = await registerUser({
       email: validation.data.email,
       passwordHash,
     });
 
-    addAuditLogEntry({
+    await addAuditLogEntry({
       actorId: user.id,
       actorRole: user.role,
       action: "auth.register",
@@ -85,9 +85,9 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
 
     const user = await loginUser(validation.data.email, validation.data.password);
     const token = issueAccessToken(user);
-    const refreshToken = createRefreshToken(user.id);
+    const refreshToken = await createRefreshToken(user.id);
 
-    addAuditLogEntry({
+    await addAuditLogEntry({
       actorId: user.id,
       actorRole: user.role,
       action: "auth.login",
@@ -105,7 +105,7 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const refreshHandler = (req: Request, res: Response, next: NextFunction) => {
+export const refreshHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validation = validateRefreshInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -118,7 +118,7 @@ export const refreshHandler = (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-    const stored = findRefreshToken(validation.data.refreshToken);
+    const stored = await findRefreshToken(validation.data.refreshToken);
     if (!stored || !isRefreshTokenActive(stored)) {
       throw new AppError({
         status: 401,
@@ -128,7 +128,7 @@ export const refreshHandler = (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-    const user = findUserById(stored.userId);
+    const user = await findUserById(stored.userId);
     if (!user) {
       throw new AppError({
         status: 401,
@@ -138,11 +138,20 @@ export const refreshHandler = (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-    const newRefreshToken = createRefreshToken(user.id);
-    revokeRefreshToken(stored, newRefreshToken.token);
+    if (!user.isActive) {
+      throw new AppError({
+        status: 403,
+        title: "Forbidden",
+        detail: "Account is deactivated.",
+        type: "https://httpstatuses.com/403",
+      });
+    }
+
+    const newRefreshToken = await createRefreshToken(user.id);
+    await revokeRefreshToken(stored, newRefreshToken.token);
     const token = issueAccessToken(user);
 
-    addAuditLogEntry({
+    await addAuditLogEntry({
       actorId: user.id,
       actorRole: user.role,
       action: "auth.refresh",
@@ -160,7 +169,7 @@ export const refreshHandler = (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-export const logoutHandler = (req: Request, res: Response, next: NextFunction) => {
+export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validation = validateRefreshInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -173,12 +182,12 @@ export const logoutHandler = (req: Request, res: Response, next: NextFunction) =
       });
     }
 
-    const stored = findRefreshToken(validation.data.refreshToken);
+    const stored = await findRefreshToken(validation.data.refreshToken);
     if (stored) {
-      revokeRefreshToken(stored);
-      const user = findUserById(stored.userId);
+      await revokeRefreshToken(stored);
+      const user = await findUserById(stored.userId);
       if (user) {
-        addAuditLogEntry({
+        await addAuditLogEntry({
           actorId: user.id,
           actorRole: user.role,
           action: "auth.logout",
@@ -193,7 +202,7 @@ export const logoutHandler = (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-export const revokeHandler = (req: Request, res: Response, next: NextFunction) => {
+export const revokeHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validation = validateRefreshInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -206,12 +215,12 @@ export const revokeHandler = (req: Request, res: Response, next: NextFunction) =
       });
     }
 
-    const stored = findRefreshToken(validation.data.refreshToken);
+    const stored = await findRefreshToken(validation.data.refreshToken);
     if (stored) {
-      revokeRefreshToken(stored);
-      const user = findUserById(stored.userId);
+      await revokeRefreshToken(stored);
+      const user = await findUserById(stored.userId);
       if (user) {
-        addAuditLogEntry({
+        await addAuditLogEntry({
           actorId: user.id,
           actorRole: user.role,
           action: "auth.revoke",

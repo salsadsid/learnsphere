@@ -13,7 +13,10 @@ const toEnrollmentResponse = (enrollment: Enrollment): EnrollmentResponseDto => 
   createdAt: enrollment.createdAt.toISOString(),
 });
 
-export const assertCourseAccess = (courseId: string, user: AuthUser | undefined): void => {
+export const assertCourseAccess = async (
+  courseId: string,
+  user: AuthUser | undefined
+): Promise<void> => {
   if (!user) {
     throw new AppError({
       status: 401,
@@ -23,7 +26,7 @@ export const assertCourseAccess = (courseId: string, user: AuthUser | undefined)
     });
   }
 
-  const course = findCourseById(courseId);
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -41,7 +44,7 @@ export const assertCourseAccess = (courseId: string, user: AuthUser | undefined)
     return;
   }
 
-  const enrollment = findEnrollment(user.id, courseId);
+  const enrollment = await findEnrollment(user.id, courseId);
   if (!enrollment) {
     throw new AppError({
       status: 403,
@@ -52,15 +55,15 @@ export const assertCourseAccess = (courseId: string, user: AuthUser | undefined)
   }
 };
 
-export const getEnrollmentStatusService = (
+export const getEnrollmentStatusService = async (
   courseId: string,
   user: AuthUser | undefined
-): EnrollmentStatusResponseDto => {
+): Promise<EnrollmentStatusResponseDto> => {
   if (!user) {
     return { enrolled: false, access: "none" };
   }
 
-  const course = findCourseById(courseId);
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -74,7 +77,7 @@ export const getEnrollmentStatusService = (
     return { enrolled: true, access: "owner" };
   }
 
-  const enrollment = findEnrollment(user.id, courseId);
+  const enrollment = await findEnrollment(user.id, courseId);
   if (!enrollment) {
     return { enrolled: false, access: "none" };
   }
@@ -86,11 +89,11 @@ export const getEnrollmentStatusService = (
   };
 };
 
-export const enrollUserService = (
+export const enrollUserService = async (
   user: AuthUser,
   courseId: string
-): { response: EnrollmentResponseDto; created: boolean } => {
-  const course = findCourseById(courseId);
+): Promise<{ response: EnrollmentResponseDto; created: boolean }> => {
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -100,13 +103,15 @@ export const enrollUserService = (
     });
   }
 
-  const result = createEnrollment({ userId: user.id, courseId });
+  const result = await createEnrollment({ userId: user.id, courseId });
   if (result.created) {
     enqueueEnrollmentEmail({ userId: user.id, courseId });
   }
   return { response: toEnrollmentResponse(result.enrollment), created: result.created };
 };
 
-export const listEnrollmentsService = (user: AuthUser): EnrollmentListResponseDto => ({
-  items: listEnrollmentsByUser(user.id).map(toEnrollmentResponse),
+export const listEnrollmentsService = async (
+  user: AuthUser
+): Promise<EnrollmentListResponseDto> => ({
+  items: (await listEnrollmentsByUser(user.id)).map(toEnrollmentResponse),
 });

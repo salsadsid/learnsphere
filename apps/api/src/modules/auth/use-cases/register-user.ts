@@ -8,8 +8,12 @@ type RegisterUserInput = {
   role?: UserRole;
 };
 
-export const registerUser = ({ email, passwordHash, role }: RegisterUserInput): AuthUser => {
-  const existingUser = findUserByEmail(email);
+export const registerUser = async ({
+  email,
+  passwordHash,
+  role,
+}: RegisterUserInput): Promise<AuthUser> => {
+  const existingUser = await findUserByEmail(email);
   if (existingUser) {
     throw new AppError({
       status: 409,

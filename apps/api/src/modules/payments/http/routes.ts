@@ -22,7 +22,7 @@ type AuthenticatedRequest = Request & { user?: AuthUser };
 
 export const paymentsRouter = Router();
 
-paymentsRouter.get("/history", requireAuth, (req: AuthenticatedRequest, res, next) => {
+paymentsRouter.get("/history", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     if (!req.user) {
       throw new AppError({
@@ -33,14 +33,17 @@ paymentsRouter.get("/history", requireAuth, (req: AuthenticatedRequest, res, nex
       });
     }
 
-    const response: PaymentHistoryResponseDto = listPaymentHistoryService(req.user);
+    const response: PaymentHistoryResponseDto = await listPaymentHistoryService(req.user);
     res.json(response);
   } catch (error) {
     next(error);
   }
 });
 
-paymentsRouter.get("/status/:courseId", requireAuth, (req: AuthenticatedRequest, res, next) => {
+paymentsRouter.get(
+  "/status/:courseId",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateCourseParamInput(req.params);
     if (!validation.isValid || !validation.data) {
@@ -62,7 +65,7 @@ paymentsRouter.get("/status/:courseId", requireAuth, (req: AuthenticatedRequest,
       });
     }
 
-    const response: PaymentStatusResponseDto = getPaymentStatusService(
+    const response: PaymentStatusResponseDto = await getPaymentStatusService(
       req.user,
       validation.data.courseId
     );
@@ -73,7 +76,7 @@ paymentsRouter.get("/status/:courseId", requireAuth, (req: AuthenticatedRequest,
   }
 });
 
-paymentsRouter.post("/checkout", requireAuth, (req: AuthenticatedRequest, res, next) => {
+paymentsRouter.post("/checkout", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateCheckoutInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -105,7 +108,7 @@ paymentsRouter.post("/checkout", requireAuth, (req: AuthenticatedRequest, res, n
       });
     }
 
-    const response: CreateCheckoutResponseDto = createCheckoutService(
+    const response: CreateCheckoutResponseDto = await createCheckoutService(
       req.user,
       validation.data,
       idempotencyKey
@@ -117,7 +120,7 @@ paymentsRouter.post("/checkout", requireAuth, (req: AuthenticatedRequest, res, n
   }
 });
 
-paymentsRouter.post("/webhook", (req, res, next) => {
+paymentsRouter.post("/webhook", async (req, res, next) => {
   try {
     const signature = req.header("x-signature") ?? undefined;
     verifyWebhookSignature(req.body, signature);
@@ -133,7 +136,7 @@ paymentsRouter.post("/webhook", (req, res, next) => {
       });
     }
 
-    const response: PaymentWebhookResponseDto = handleWebhookService(validation.data);
+    const response: PaymentWebhookResponseDto = await handleWebhookService(validation.data);
     res.json(response);
   } catch (error) {
     next(error);

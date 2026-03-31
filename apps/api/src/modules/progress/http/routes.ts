@@ -40,7 +40,10 @@ type AuthenticatedRequest = Request & { user?: AuthUser };
 
 export const progressRouter = Router();
 
-const assertInstructorAccess = (courseId: string, user: AuthUser | undefined): void => {
+const assertInstructorAccess = async (
+  courseId: string,
+  user: AuthUser | undefined
+): Promise<void> => {
   if (!user) {
     throw new AppError({
       status: 401,
@@ -50,7 +53,7 @@ const assertInstructorAccess = (courseId: string, user: AuthUser | undefined): v
     });
   }
 
-  const course = findCourseById(courseId);
+  const course = await findCourseById(courseId);
   if (!course) {
     throw new AppError({
       status: 404,
@@ -78,7 +81,7 @@ progressRouter.get(
   "/instructor/course/:courseId",
   requireAuth,
   requireRole({ roles: ["instructor", "admin"] }),
-  (req: AuthenticatedRequest, res, next) => {
+  async (req: AuthenticatedRequest, res, next) => {
     try {
       const validation = validateCourseParamInput(req.params);
       if (!validation.isValid || !validation.data) {
@@ -91,11 +94,10 @@ progressRouter.get(
         });
       }
 
-      assertInstructorAccess(validation.data.courseId, req.user);
+      await assertInstructorAccess(validation.data.courseId, req.user);
 
-      const response: InstructorCourseProgressResponseDto = getInstructorCourseProgressService(
-        validation.data.courseId
-      );
+      const response: InstructorCourseProgressResponseDto =
+        await getInstructorCourseProgressService(validation.data.courseId);
 
       res.json(response);
     } catch (error) {
@@ -104,7 +106,10 @@ progressRouter.get(
   }
 );
 
-progressRouter.get("/student/summary", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.get(
+  "/student/summary",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     if (!req.user) {
       throw new AppError({
@@ -115,7 +120,7 @@ progressRouter.get("/student/summary", requireAuth, (req: AuthenticatedRequest, 
       });
     }
 
-    const response: StudentDashboardResponseDto = getStudentDashboardService(req.user.id);
+    const response: StudentDashboardResponseDto = await getStudentDashboardService(req.user.id);
 
     res.json(response);
   } catch (error) {
@@ -127,7 +132,7 @@ progressRouter.get(
   "/instructor/course/:courseId/export",
   requireAuth,
   requireRole({ roles: ["instructor", "admin"] }),
-  (req: AuthenticatedRequest, res, next) => {
+  async (req: AuthenticatedRequest, res, next) => {
     try {
       const validation = validateCourseParamInput(req.params);
       if (!validation.isValid || !validation.data) {
@@ -140,9 +145,9 @@ progressRouter.get(
         });
       }
 
-      assertInstructorAccess(validation.data.courseId, req.user);
+      await assertInstructorAccess(validation.data.courseId, req.user);
 
-      const data = getInstructorCourseProgressService(validation.data.courseId);
+      const data = await getInstructorCourseProgressService(validation.data.courseId);
       const csv = buildInstructorCourseProgressCsv(data);
 
       res
@@ -159,7 +164,10 @@ progressRouter.get(
   }
 );
 
-progressRouter.get("/course/:courseId", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.get(
+  "/course/:courseId",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateCourseParamInput(req.params);
     if (!validation.isValid || !validation.data) {
@@ -181,9 +189,9 @@ progressRouter.get("/course/:courseId", requireAuth, (req: AuthenticatedRequest,
       });
     }
 
-    assertCourseAccess(validation.data.courseId, req.user);
+    await assertCourseAccess(validation.data.courseId, req.user);
 
-    const response: CourseProgressResponseDto = getCourseProgressService(
+    const response: CourseProgressResponseDto = await getCourseProgressService(
       req.user.id,
       validation.data.courseId
     );
@@ -194,7 +202,10 @@ progressRouter.get("/course/:courseId", requireAuth, (req: AuthenticatedRequest,
   }
 });
 
-progressRouter.get("/completions/:courseId", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.get(
+  "/completions/:courseId",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateCourseParamInput(req.params);
     if (!validation.isValid || !validation.data) {
@@ -216,16 +227,16 @@ progressRouter.get("/completions/:courseId", requireAuth, (req: AuthenticatedReq
       });
     }
 
-    assertCourseAccess(validation.data.courseId, req.user);
+    await assertCourseAccess(validation.data.courseId, req.user);
 
-    const response = listLessonCompletionsService(req.user.id, validation.data.courseId);
+    const response = await listLessonCompletionsService(req.user.id, validation.data.courseId);
     res.json(response);
   } catch (error) {
     next(error);
   }
 });
 
-progressRouter.get("/:videoId", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.get("/:videoId", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateProgressParamInput(req.params);
     if (!validation.isValid || !validation.data) {
@@ -247,7 +258,7 @@ progressRouter.get("/:videoId", requireAuth, (req: AuthenticatedRequest, res, ne
       });
     }
 
-    const response = getVideoProgressService(req.user.id, validation.data.videoId);
+    const response = await getVideoProgressService(req.user.id, validation.data.videoId);
 
     if (!response) {
       res.status(404).json({
@@ -265,7 +276,7 @@ progressRouter.get("/:videoId", requireAuth, (req: AuthenticatedRequest, res, ne
   }
 });
 
-progressRouter.post("/", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateSaveProgressInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -287,7 +298,10 @@ progressRouter.post("/", requireAuth, (req: AuthenticatedRequest, res, next) => 
       });
     }
 
-    const response: SaveProgressResponseDto = saveVideoProgressService(req.user.id, validation.data);
+    const response: SaveProgressResponseDto = await saveVideoProgressService(
+      req.user.id,
+      validation.data
+    );
 
     res.json(response);
   } catch (error) {
@@ -295,7 +309,10 @@ progressRouter.post("/", requireAuth, (req: AuthenticatedRequest, res, next) => 
   }
 });
 
-progressRouter.post("/completions", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.post(
+  "/completions",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateLessonCompletionInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -317,9 +334,9 @@ progressRouter.post("/completions", requireAuth, (req: AuthenticatedRequest, res
       });
     }
 
-    assertCourseAccess(validation.data.courseId, req.user);
+    await assertCourseAccess(validation.data.courseId, req.user);
 
-    const course = findCourseById(validation.data.courseId);
+    const course = await findCourseById(validation.data.courseId);
     if (!course) {
       throw new AppError({
         status: 404,
@@ -329,7 +346,7 @@ progressRouter.post("/completions", requireAuth, (req: AuthenticatedRequest, res
       });
     }
 
-    const lesson = findLessonById(validation.data.lessonId);
+    const lesson = await findLessonById(validation.data.lessonId);
     if (!lesson || lesson.courseId !== validation.data.courseId) {
       throw new AppError({
         status: 404,
@@ -339,7 +356,7 @@ progressRouter.post("/completions", requireAuth, (req: AuthenticatedRequest, res
       });
     }
 
-    const response: LessonCompletionResponseDto = markLessonCompleteService(
+    const response: LessonCompletionResponseDto = await markLessonCompleteService(
       req.user.id,
       validation.data
     );
@@ -350,7 +367,10 @@ progressRouter.post("/completions", requireAuth, (req: AuthenticatedRequest, res
   }
 });
 
-progressRouter.post("/snapshots", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.post(
+  "/snapshots",
+  requireAuth,
+  async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateWatchSnapshotInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -372,9 +392,9 @@ progressRouter.post("/snapshots", requireAuth, (req: AuthenticatedRequest, res, 
       });
     }
 
-    assertCourseAccess(validation.data.courseId, req.user);
+    await assertCourseAccess(validation.data.courseId, req.user);
 
-    const course = findCourseById(validation.data.courseId);
+    const course = await findCourseById(validation.data.courseId);
     if (!course) {
       throw new AppError({
         status: 404,
@@ -384,7 +404,7 @@ progressRouter.post("/snapshots", requireAuth, (req: AuthenticatedRequest, res, 
       });
     }
 
-    const lesson = findLessonById(validation.data.lessonId);
+    const lesson = await findLessonById(validation.data.lessonId);
     if (!lesson || lesson.courseId !== validation.data.courseId) {
       throw new AppError({
         status: 404,
@@ -394,7 +414,7 @@ progressRouter.post("/snapshots", requireAuth, (req: AuthenticatedRequest, res, 
       });
     }
 
-    const response: WatchSnapshotResponseDto = addWatchSnapshotService(
+    const response: WatchSnapshotResponseDto = await addWatchSnapshotService(
       req.user.id,
       validation.data
     );
@@ -405,7 +425,7 @@ progressRouter.post("/snapshots", requireAuth, (req: AuthenticatedRequest, res, 
   }
 });
 
-progressRouter.post("/events", requireAuth, (req: AuthenticatedRequest, res, next) => {
+progressRouter.post("/events", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const validation = validateVideoEventInput(req.body);
     if (!validation.isValid || !validation.data) {
@@ -427,9 +447,9 @@ progressRouter.post("/events", requireAuth, (req: AuthenticatedRequest, res, nex
       });
     }
 
-    assertCourseAccess(validation.data.courseId, req.user);
+    await assertCourseAccess(validation.data.courseId, req.user);
 
-    const course = findCourseById(validation.data.courseId);
+    const course = await findCourseById(validation.data.courseId);
     if (!course) {
       throw new AppError({
         status: 404,
@@ -439,7 +459,7 @@ progressRouter.post("/events", requireAuth, (req: AuthenticatedRequest, res, nex
       });
     }
 
-    const lesson = findLessonById(validation.data.lessonId);
+    const lesson = await findLessonById(validation.data.lessonId);
     if (!lesson || lesson.courseId !== validation.data.courseId) {
       throw new AppError({
         status: 404,
@@ -449,7 +469,7 @@ progressRouter.post("/events", requireAuth, (req: AuthenticatedRequest, res, nex
       });
     }
 
-    const response: VideoEventResponseDto = addVideoEventService(
+    const response: VideoEventResponseDto = await addVideoEventService(
       req.user.id,
       validation.data
     );

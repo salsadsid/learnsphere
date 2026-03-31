@@ -1,4 +1,4 @@
-import type { Course, CourseModule, Lesson } from "../domain/types";
+import type { Course, CourseModule, Lesson, LessonQuiz, LessonType } from "../domain/types";
 import type {
   CourseCategoriesResponseDto,
   CourseDetailResponseDto,
@@ -12,6 +12,7 @@ import type { ListCategoriesInput, ListCoursesInput } from "./validation";
 import {
   countLessonsByInstructor,
   countModulesByInstructor,
+  listLessonsByModule,
   listCategories,
   listCourses,
 } from "../infra/course-store";
@@ -19,12 +20,16 @@ import { clearCacheByPrefix, getOrSetCache } from "../../../shared/cache";
 import { listEnrollmentsByCourse } from "../../enrollment/infra/enrollment-store";
 import { enqueueCourseUpdateEmail } from "../../notifications/infra/notification-queue";
 import { createCourseUseCase } from "../use-cases/create-course";
+import { deleteCourseUseCase } from "../use-cases/delete-course";
 import { createLessonUseCase } from "../use-cases/create-lesson";
 import { createModuleUseCase } from "../use-cases/create-module";
+import { deleteLessonUseCase } from "../use-cases/delete-lesson";
 import { getCourseDetailUseCase } from "../use-cases/get-course-detail";
 import { publishCourseUseCase } from "../use-cases/publish-course";
 import { unpublishCourseUseCase } from "../use-cases/unpublish-course";
 import { updateCourseUseCase } from "../use-cases/update-course";
+import { updateLessonUseCase } from "../use-cases/update-lesson";
+import { updateModuleUseCase } from "../use-cases/update-module";
 
 const toCourseResponse = (course: Course): CourseResponseDto => ({
   id: course.id,
@@ -41,10 +46,14 @@ const toCourseResponse = (course: Course): CourseResponseDto => ({
 const toLessonResponse = (lesson: Lesson): LessonResponseDto => ({
   id: lesson.id,
   title: lesson.title,
+  type: lesson.type,
   order: lesson.order,
   ...(lesson.durationMinutes !== undefined
     ? { durationMinutes: lesson.durationMinutes }
     : {}),
+  ...(lesson.content !== undefined ? { content: lesson.content } : {}),
+  ...(lesson.resourceUrl !== undefined ? { resourceUrl: lesson.resourceUrl } : {}),
+  ...(lesson.quiz !== undefined ? { quiz: lesson.quiz } : {}),
 });
 
 const toModuleResponse = (moduleItem: CourseModule, moduleLessons: Lesson[]): ModuleResponseDto => ({
@@ -83,7 +92,7 @@ const buildCategoriesCacheKey = (status?: "draft" | "published"): string =>
 
 const buildCourseDetailCacheKey = (courseId: string): string => `courses:detail:${courseId}`;
 
-export const listCoursesService = (input: ListCoursesInput): ListCoursesResponseDto => {
+export const listCoursesService = async (input: ListCoursesInput): Promise<ListCoursesResponseDto> => {
   const listInput: {
     page: number;
     pageSize: number;
@@ -114,8 +123,8 @@ export const listCoursesService = (input: ListCoursesInput): ListCoursesResponse
 
   const cacheKey = buildCoursesListCacheKey(listInput);
 
-  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, () => {
-    const { items, total } = listCourses(listInput);
+  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, async () => {
+    const { items, total } = await listCourses(listInput);
     const totalPages = Math.ceil(total / input.pageSize);
     const nextPage = input.page < totalPages ? input.page + 1 : null;
 
@@ -130,10 +139,10 @@ export const listCoursesService = (input: ListCoursesInput): ListCoursesResponse
   });
 };
 
-export const listInstructorCoursesService = (
+export const listInstructorCoursesService = async (
   instructorId: string,
   input: ListCoursesInput
-): ListCoursesResponseDto => {
+): Promise<ListCoursesResponseDto> => {
   const listInput: {
     page: number;
     pageSize: number;
@@ -161,8 +170,8 @@ export const listInstructorCoursesService = (
 
   const cacheKey = buildInstructorListCacheKey(listInput);
 
-  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, () => {
-    const { items, total } = listCourses(listInput);
+  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, async () => {
+    const { items, total } = await listCourses(listInput);
     const totalPages = Math.ceil(total / input.pageSize);
     const nextPage = input.page < totalPages ? input.page + 1 : null;
 
@@ -177,8 +186,14 @@ export const listInstructorCoursesService = (
   });
 };
 
-export const getInstructorSummaryService = (instructorId: string): InstructorSummaryResponseDto => {
-  const { items } = listCourses({ page: 1, pageSize: Number.MAX_SAFE_INTEGER, instructorId });
+export const getInstructorSummaryService = async (
+  instructorId: string
+): Promise<InstructorSummaryResponseDto> => {
+  const { items } = await listCourses({
+    page: 1,
+    pageSize: Number.MAX_SAFE_INTEGER,
+    instructorId,
+  });
   const totalCourses = items.length;
   const publishedCourses = items.filter((course) => course.status === "published").length;
   const draftCourses = items.filter((course) => course.status === "draft").length;
@@ -187,18 +202,18 @@ export const getInstructorSummaryService = (instructorId: string): InstructorSum
     totalCourses,
     publishedCourses,
     draftCourses,
-    moduleCount: countModulesByInstructor(instructorId),
-    lessonCount: countLessonsByInstructor(instructorId),
+    moduleCount: await countModulesByInstructor(instructorId),
+    lessonCount: await countLessonsByInstructor(instructorId),
   };
 };
 
-export const listCourseCategoriesService = (
+export const listCourseCategoriesService = async (
   input: ListCategoriesInput
-): CourseCategoriesResponseDto => {
+): Promise<CourseCategoriesResponseDto> => {
   const cacheKey = buildCategoriesCacheKey(input.status);
 
-  return getOrSetCache(cacheKey, COURSE_CATEGORIES_TTL_MS, () => {
-    const categories = listCategories({
+  return getOrSetCache(cacheKey, COURSE_CATEGORIES_TTL_MS, async () => {
+    const categories = await listCategories({
       ...(input.status !== undefined ? { status: input.status } : {}),
     });
 
@@ -206,11 +221,13 @@ export const listCourseCategoriesService = (
   });
 };
 
-export const getCourseDetailService = (courseId: string): CourseDetailResponseDto => {
+export const getCourseDetailService = async (
+  courseId: string
+): Promise<CourseDetailResponseDto> => {
   const cacheKey = buildCourseDetailCacheKey(courseId);
 
-  return getOrSetCache(cacheKey, COURSE_DETAIL_TTL_MS, () => {
-    const detail = getCourseDetailUseCase(courseId);
+  return getOrSetCache(cacheKey, COURSE_DETAIL_TTL_MS, async () => {
+    const detail = await getCourseDetailUseCase(courseId);
 
     return {
       ...toCourseResponse(detail.course),
@@ -219,28 +236,28 @@ export const getCourseDetailService = (courseId: string): CourseDetailResponseDt
   });
 };
 
-export const createCourseService = (input: {
+export const createCourseService = async (input: {
   title: string;
   instructorId: string;
   summary?: string;
   category?: string;
   level?: "beginner" | "intermediate" | "advanced";
-}): CourseResponseDto => {
-  const course = createCourseUseCase(input);
+}): Promise<CourseResponseDto> => {
+  const course = await createCourseUseCase(input);
   clearCacheByPrefix("courses:");
   return toCourseResponse(course);
 };
 
-export const updateCourseService = (input: {
+export const updateCourseService = async (input: {
   courseId: string;
   title?: string;
   summary?: string;
   category?: string;
   level?: "beginner" | "intermediate" | "advanced";
-}): CourseResponseDto => {
-  const course = updateCourseUseCase(input);
+}): Promise<CourseResponseDto> => {
+  const course = await updateCourseUseCase(input);
   clearCacheByPrefix("courses:");
-  const enrollments = listEnrollmentsByCourse(course.id);
+  const enrollments = await listEnrollmentsByCourse(course.id);
   for (const enrollment of enrollments) {
     enqueueCourseUpdateEmail({
       userId: enrollment.userId,
@@ -251,38 +268,87 @@ export const updateCourseService = (input: {
   return toCourseResponse(course);
 };
 
-export const createModuleService = (input: {
+export const createModuleService = async (input: {
   courseId: string;
   title: string;
   summary?: string;
   order?: number;
-}): ModuleResponseDto => {
-  const moduleItem = createModuleUseCase(input);
+}): Promise<ModuleResponseDto> => {
+  const moduleItem = await createModuleUseCase(input);
   clearCacheByPrefix("courses:");
   return toModuleResponse(moduleItem, []);
 };
 
-export const createLessonService = (input: {
+export const createLessonService = async (input: {
   courseId: string;
   moduleId: string;
   title: string;
+  type: LessonType;
   content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
   order?: number;
   durationMinutes?: number;
-}): LessonResponseDto => {
-  const lesson = createLessonUseCase(input);
+}): Promise<LessonResponseDto> => {
+  const lesson = await createLessonUseCase(input);
   clearCacheByPrefix("courses:");
   return toLessonResponse(lesson);
 };
 
-export const publishCourseService = (courseId: string): CourseResponseDto => {
-  const course = publishCourseUseCase(courseId);
+export const updateModuleService = async (input: {
+  courseId: string;
+  moduleId: string;
+  title?: string;
+  summary?: string;
+  order?: number;
+}): Promise<ModuleResponseDto> => {
+  const moduleItem = await updateModuleUseCase(input);
+  const lessons = await listLessonsByModule(moduleItem.id);
+  clearCacheByPrefix("courses:");
+  return toModuleResponse(moduleItem, lessons);
+};
+
+export const updateLessonService = async (input: {
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+  title: string;
+  type: LessonType;
+  content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
+  order?: number;
+  durationMinutes?: number;
+}): Promise<LessonResponseDto> => {
+  const lesson = await updateLessonUseCase(input);
+  clearCacheByPrefix("courses:");
+  return toLessonResponse(lesson);
+};
+
+export const deleteLessonService = async (input: {
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+}): Promise<{ deleted: boolean }> => {
+  const result = await deleteLessonUseCase(input);
+  clearCacheByPrefix("courses:");
+  return result;
+};
+
+export const publishCourseService = async (courseId: string): Promise<CourseResponseDto> => {
+  const course = await publishCourseUseCase(courseId);
   clearCacheByPrefix("courses:");
   return toCourseResponse(course);
 };
 
-export const unpublishCourseService = (courseId: string): CourseResponseDto => {
-  const course = unpublishCourseUseCase(courseId);
+export const unpublishCourseService = async (courseId: string): Promise<CourseResponseDto> => {
+  const course = await unpublishCourseUseCase(courseId);
+  clearCacheByPrefix("courses:");
+  return toCourseResponse(course);
+};
+
+export const deleteCourseService = async (courseId: string): Promise<CourseResponseDto> => {
+  const course = await deleteCourseUseCase(courseId);
   clearCacheByPrefix("courses:");
   return toCourseResponse(course);
 };

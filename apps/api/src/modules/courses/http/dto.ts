@@ -1,4 +1,4 @@
-import type { CourseLevel, CourseStatus } from "../domain/types";
+import type { CourseLevel, CourseStatus, LessonQuiz, LessonType } from "../domain/types";
 
 export type CreateCourseRequestDto = {
   title: string;
@@ -31,8 +31,12 @@ export type ModuleResponseDto = {
 export type LessonResponseDto = {
   id: string;
   title: string;
+  type: LessonType;
   order: number;
   durationMinutes?: number;
+  content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
 };
 
 export type CourseDetailResponseDto = CourseResponseDto & {
@@ -59,7 +63,10 @@ export type CreateModuleRequestDto = {
 
 export type CreateLessonRequestDto = {
   title: string;
+  type: LessonType;
   content?: string;
+  resourceUrl?: string;
+  quiz?: LessonQuiz;
   order?: number;
   durationMinutes?: number;
 };

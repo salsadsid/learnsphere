@@ -20,8 +20,9 @@ export const requestLogger = (options: LoggerOptions = {}) => {
     const start = process.hrtime.bigint();
     res.on("finish", () => {
       const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+      const ip = req.ip ?? "unknown";
       console.log(
-        `[${requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs.toFixed(1)}ms`
+        `[${requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs.toFixed(1)}ms ip=${ip}`
       );
     });
 
