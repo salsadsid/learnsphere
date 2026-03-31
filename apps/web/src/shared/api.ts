@@ -14,6 +14,7 @@ type RequestOptions = {
   body?: unknown;
   auth?: boolean;
   skipRefresh?: boolean;
+  headers?: Record<string, string>;
 };
 
 const extractError = (payload: unknown): string => {
@@ -39,6 +40,9 @@ const parsePayload = async (response: Response): Promise<unknown> => {
 
   return response.json().catch(() => null);
 };
+
+const parseTextPayload = async (response: Response): Promise<string> =>
+  response.text().catch(() => "");
 
 const refreshTokens = async (): Promise<boolean> => {
   const refreshToken = getRefreshToken();
@@ -79,9 +83,9 @@ const refreshTokens = async (): Promise<boolean> => {
 
 const requestJson = async <T>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> => {
   const method = options.method ?? "GET";
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...(options.headers ?? {}) };
 
-  if (options.body !== undefined) {
+  if (options.body !== undefined && headers["Content-Type"] === undefined) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -126,17 +130,79 @@ const requestJson = async <T>(path: string, options: RequestOptions = {}): Promi
   };
 };
 
+const requestText = async (path: string, options: RequestOptions = {}): Promise<ApiResponse<string>> => {
+  const method = options.method ?? "GET";
+  const headers: Record<string, string> = { ...(options.headers ?? {}) };
+
+  if (options.body !== undefined && headers["Content-Type"] === undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (options.auth) {
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (response.ok) {
+    const payload = await parseTextPayload(response);
+    return {
+      ok: true,
+      status: response.status,
+      data: payload,
+    };
+  }
+
+  if (response.status === 401 && options.auth && !options.skipRefresh) {
+    const refreshed = await refreshTokens();
+    if (refreshed) {
+      return requestText(path, { ...options, skipRefresh: true });
+    }
+  }
+
+  if (response.status === 401 && options.auth) {
+    clearTokens();
+  }
+
+  const payload = await parsePayload(response);
+
+  return {
+    ok: false,
+    status: response.status,
+    error: extractError(payload),
+  };
+};
+
 export const getJson = async <T>(path: string): Promise<ApiResponse<T>> =>
   requestJson<T>(path);
 
-export const postJson = async <T>(path: string, body: unknown): Promise<ApiResponse<T>> =>
-  requestJson<T>(path, { method: "POST", body });
+export const postJson = async <T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+): Promise<ApiResponse<T>> => requestJson<T>(path, { ...options, method: "POST", body });
 
 export const authGetJson = async <T>(path: string): Promise<ApiResponse<T>> =>
   requestJson<T>(path, { method: "GET", auth: true });
 
-export const authPostJson = async <T>(path: string, body: unknown): Promise<ApiResponse<T>> =>
-  requestJson<T>(path, { method: "POST", body, auth: true });
+export const authPostJson = async <T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+): Promise<ApiResponse<T>> => requestJson<T>(path, { ...options, method: "POST", body, auth: true });
 
-export const authPatchJson = async <T>(path: string, body: unknown): Promise<ApiResponse<T>> =>
-  requestJson<T>(path, { method: "PATCH", body, auth: true });
+export const authPatchJson = async <T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+): Promise<ApiResponse<T>> => requestJson<T>(path, { ...options, method: "PATCH", body, auth: true });
+
+export const authGetText = async (path: string): Promise<ApiResponse<string>> =>
+  requestText(path, { method: "GET", auth: true });

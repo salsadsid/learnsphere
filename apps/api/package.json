@@ -8,6 +8,7 @@
     "lint": "tsc --noEmit",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
+    "loadtest": "node ./scripts/loadtest.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

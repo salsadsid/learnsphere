@@ -15,6 +15,9 @@ import {
   listCategories,
   listCourses,
 } from "../infra/course-store";
+import { clearCacheByPrefix, getOrSetCache } from "../../../shared/cache";
+import { listEnrollmentsByCourse } from "../../enrollment/infra/enrollment-store";
+import { enqueueCourseUpdateEmail } from "../../notifications/infra/notification-queue";
 import { createCourseUseCase } from "../use-cases/create-course";
 import { createLessonUseCase } from "../use-cases/create-lesson";
 import { createModuleUseCase } from "../use-cases/create-module";
@@ -53,6 +56,33 @@ const toModuleResponse = (moduleItem: CourseModule, moduleLessons: Lesson[]): Mo
   ...(moduleItem.summary !== undefined ? { summary: moduleItem.summary } : {}),
 });
 
+const COURSES_LIST_TTL_MS = 30_000;
+const COURSE_DETAIL_TTL_MS = 30_000;
+const COURSE_CATEGORIES_TTL_MS = 60_000;
+
+const buildCoursesListCacheKey = (input: {
+  page: number;
+  pageSize: number;
+  q?: string;
+  category?: string;
+  instructorId?: string;
+  status?: "draft" | "published";
+}): string => `courses:list:${JSON.stringify(input)}`;
+
+const buildInstructorListCacheKey = (input: {
+  page: number;
+  pageSize: number;
+  instructorId: string;
+  q?: string;
+  category?: string;
+  status?: "draft" | "published";
+}): string => `courses:instructor:${JSON.stringify(input)}`;
+
+const buildCategoriesCacheKey = (status?: "draft" | "published"): string =>
+  `courses:categories:${status ?? "all"}`;
+
+const buildCourseDetailCacheKey = (courseId: string): string => `courses:detail:${courseId}`;
+
 export const listCoursesService = (input: ListCoursesInput): ListCoursesResponseDto => {
   const listInput: {
     page: number;
@@ -82,18 +112,22 @@ export const listCoursesService = (input: ListCoursesInput): ListCoursesResponse
     listInput.status = input.status;
   }
 
-  const { items, total } = listCourses(listInput);
-  const totalPages = Math.ceil(total / input.pageSize);
-  const nextPage = input.page < totalPages ? input.page + 1 : null;
+  const cacheKey = buildCoursesListCacheKey(listInput);
 
-  return {
-    items: items.map(toCourseResponse),
-    page: input.page,
-    pageSize: input.pageSize,
-    total,
-    totalPages,
-    nextPage,
-  };
+  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, () => {
+    const { items, total } = listCourses(listInput);
+    const totalPages = Math.ceil(total / input.pageSize);
+    const nextPage = input.page < totalPages ? input.page + 1 : null;
+
+    return {
+      items: items.map(toCourseResponse),
+      page: input.page,
+      pageSize: input.pageSize,
+      total,
+      totalPages,
+      nextPage,
+    };
+  });
 };
 
 export const listInstructorCoursesService = (
@@ -125,18 +159,22 @@ export const listInstructorCoursesService = (
     listInput.status = input.status;
   }
 
-  const { items, total } = listCourses(listInput);
-  const totalPages = Math.ceil(total / input.pageSize);
-  const nextPage = input.page < totalPages ? input.page + 1 : null;
+  const cacheKey = buildInstructorListCacheKey(listInput);
 
-  return {
-    items: items.map(toCourseResponse),
-    page: input.page,
-    pageSize: input.pageSize,
-    total,
-    totalPages,
-    nextPage,
-  };
+  return getOrSetCache(cacheKey, COURSES_LIST_TTL_MS, () => {
+    const { items, total } = listCourses(listInput);
+    const totalPages = Math.ceil(total / input.pageSize);
+    const nextPage = input.page < totalPages ? input.page + 1 : null;
+
+    return {
+      items: items.map(toCourseResponse),
+      page: input.page,
+      pageSize: input.pageSize,
+      total,
+      totalPages,
+      nextPage,
+    };
+  });
 };
 
 export const getInstructorSummaryService = (instructorId: string): InstructorSummaryResponseDto => {
@@ -157,20 +195,28 @@ export const getInstructorSummaryService = (instructorId: string): InstructorSum
 export const listCourseCategoriesService = (
   input: ListCategoriesInput
 ): CourseCategoriesResponseDto => {
-  const categories = listCategories({
-    ...(input.status !== undefined ? { status: input.status } : {}),
-  });
+  const cacheKey = buildCategoriesCacheKey(input.status);
 
-  return { categories };
+  return getOrSetCache(cacheKey, COURSE_CATEGORIES_TTL_MS, () => {
+    const categories = listCategories({
+      ...(input.status !== undefined ? { status: input.status } : {}),
+    });
+
+    return { categories };
+  });
 };
 
 export const getCourseDetailService = (courseId: string): CourseDetailResponseDto => {
-  const detail = getCourseDetailUseCase(courseId);
+  const cacheKey = buildCourseDetailCacheKey(courseId);
 
-  return {
-    ...toCourseResponse(detail.course),
-    modules: detail.modules.map((entry) => toModuleResponse(entry.module, entry.lessons)),
-  };
+  return getOrSetCache(cacheKey, COURSE_DETAIL_TTL_MS, () => {
+    const detail = getCourseDetailUseCase(courseId);
+
+    return {
+      ...toCourseResponse(detail.course),
+      modules: detail.modules.map((entry) => toModuleResponse(entry.module, entry.lessons)),
+    };
+  });
 };
 
 export const createCourseService = (input: {
@@ -181,6 +227,7 @@ export const createCourseService = (input: {
   level?: "beginner" | "intermediate" | "advanced";
 }): CourseResponseDto => {
   const course = createCourseUseCase(input);
+  clearCacheByPrefix("courses:");
   return toCourseResponse(course);
 };
 
@@ -192,6 +239,15 @@ export const updateCourseService = (input: {
   level?: "beginner" | "intermediate" | "advanced";
 }): CourseResponseDto => {
   const course = updateCourseUseCase(input);
+  clearCacheByPrefix("courses:");
+  const enrollments = listEnrollmentsByCourse(course.id);
+  for (const enrollment of enrollments) {
+    enqueueCourseUpdateEmail({
+      userId: enrollment.userId,
+      courseId: course.id,
+      courseTitle: course.title,
+    });
+  }
   return toCourseResponse(course);
 };
 
@@ -202,6 +258,7 @@ export const createModuleService = (input: {
   order?: number;
 }): ModuleResponseDto => {
   const moduleItem = createModuleUseCase(input);
+  clearCacheByPrefix("courses:");
   return toModuleResponse(moduleItem, []);
 };
 
@@ -214,11 +271,18 @@ export const createLessonService = (input: {
   durationMinutes?: number;
 }): LessonResponseDto => {
   const lesson = createLessonUseCase(input);
+  clearCacheByPrefix("courses:");
   return toLessonResponse(lesson);
 };
 
-export const publishCourseService = (courseId: string): CourseResponseDto =>
-  toCourseResponse(publishCourseUseCase(courseId));
+export const publishCourseService = (courseId: string): CourseResponseDto => {
+  const course = publishCourseUseCase(courseId);
+  clearCacheByPrefix("courses:");
+  return toCourseResponse(course);
+};
 
-export const unpublishCourseService = (courseId: string): CourseResponseDto =>
-  toCourseResponse(unpublishCourseUseCase(courseId));
+export const unpublishCourseService = (courseId: string): CourseResponseDto => {
+  const course = unpublishCourseUseCase(courseId);
+  clearCacheByPrefix("courses:");
+  return toCourseResponse(course);
+};

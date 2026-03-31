@@ -10,8 +10,11 @@ vi.mock("next/link", () => ({
 }));
 
 const getJsonMock = vi.fn();
+const authGetJsonMock = vi.fn();
 vi.mock("@/shared/api", () => ({
   getJson: (...args: unknown[]) => getJsonMock(...args),
+  authGetJson: (...args: unknown[]) => authGetJsonMock(...args),
+  authPostJson: vi.fn(),
 }));
 
 describe("CourseDetailPage", () => {
@@ -46,6 +49,38 @@ describe("CourseDetailPage", () => {
             ],
           },
         ],
+      },
+    });
+    authGetJsonMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: {
+        courseId: "course-1",
+        totalLessons: 1,
+        completedLessons: 0,
+        percentComplete: 0,
+        completedLessonIds: [],
+      },
+    });
+    authGetJsonMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: {
+        enrolled: true,
+        access: "enrolled",
+      },
+    });
+    authGetJsonMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      data: {
+        courseId: "course-1",
+        hasPayment: true,
+        paymentId: "payment-1",
+        status: "paid",
+        amountCents: 9900,
+        currency: "usd",
+        updatedAt: new Date().toISOString(),
       },
     });
 

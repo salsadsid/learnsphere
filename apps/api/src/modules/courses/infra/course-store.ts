@@ -244,6 +244,25 @@ export const listLessonsByModule = (moduleId: ModuleId): Lesson[] =>
     .slice()
     .sort((a, b) => a.order - b.order);
 
+export const listLessonsByCourse = (courseId: CourseId): Lesson[] => {
+  const moduleOrder = new Map<ModuleId, number>();
+  for (const moduleItem of modules) {
+    moduleOrder.set(moduleItem.id, moduleItem.order);
+  }
+
+  return lessons
+    .filter((lesson) => lesson.courseId === courseId)
+    .slice()
+    .sort((a, b) => {
+      const moduleA = moduleOrder.get(a.moduleId) ?? 0;
+      const moduleB = moduleOrder.get(b.moduleId) ?? 0;
+      if (moduleA !== moduleB) {
+        return moduleA - moduleB;
+      }
+      return a.order - b.order;
+    });
+};
+
 export const countLessonsByCourse = (courseId: CourseId): number =>
   lessons.filter((lesson) => lesson.courseId === courseId).length;
 

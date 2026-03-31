@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getJson } from "@/shared/api";
+import { authGetJson, authPostJson, getJson } from "@/shared/api";
 
 type Lesson = {
   id: string;
@@ -33,6 +33,45 @@ type CourseDetail = {
   modules: Module[];
 };
 
+type CourseProgress = {
+  courseId: string;
+  totalLessons: number;
+  completedLessons: number;
+  percentComplete: number;
+  completedLessonIds: string[];
+};
+
+type EnrollmentStatus = {
+  enrolled: boolean;
+  access: "owner" | "enrolled" | "none";
+};
+
+type EnrollmentResponse = {
+  id: string;
+  userId: string;
+  courseId: string;
+  createdAt: string;
+};
+
+type CheckoutResponse = {
+  paymentId: string;
+  sessionId: string;
+  checkoutUrl: string;
+  amountCents: number;
+  currency: string;
+  status: "pending" | "paid" | "failed";
+};
+
+type PaymentStatus = {
+  courseId: string;
+  hasPayment: boolean;
+  paymentId?: string;
+  status?: "pending" | "paid" | "failed";
+  amountCents?: number;
+  currency?: string;
+  updatedAt?: string;
+};
+
 type DetailState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -44,6 +83,13 @@ type CourseDetailPageProps = {
 
 export default function CourseDetailPage({ params }: CourseDetailPageProps) {
   const [state, setState] = useState<DetailState>({ status: "loading" });
+  const [progress, setProgress] = useState<CourseProgress | null>(null);
+  const [enrollment, setEnrollment] = useState<EnrollmentStatus | null>(null);
+  const [enrollMessage, setEnrollMessage] = useState<string | null>(null);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [checkout, setCheckout] = useState<CheckoutResponse | null>(null);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +106,36 @@ export default function CourseDetailPage({ params }: CourseDetailPageProps) {
       }
 
       setState({ status: "ready", data: result.data });
+
+      const progressResult = await authGetJson<CourseProgress>(
+        `/api/v1/progress/course/${params.courseId}`
+      );
+
+      const enrollmentResult = await authGetJson<EnrollmentStatus>(
+        `/api/v1/enrollments/${params.courseId}`
+      );
+
+      const paymentResult = await authGetJson<PaymentStatus>(
+        `/api/v1/payments/status/${params.courseId}`
+      );
+
+      if (!active) {
+        return;
+      }
+
+      if (progressResult.ok && progressResult.data) {
+        setProgress(progressResult.data);
+      }
+
+      if (enrollmentResult.ok && enrollmentResult.data) {
+        setEnrollment(enrollmentResult.data);
+      } else if (enrollmentResult.status === 401) {
+        setEnrollment({ enrolled: false, access: "none" });
+      }
+
+      if (paymentResult.ok && paymentResult.data) {
+        setPaymentStatus(paymentResult.data);
+      }
     };
 
     loadCourse();
@@ -93,6 +169,63 @@ export default function CourseDetailPage({ params }: CourseDetailPageProps) {
   }
 
   const { data } = state;
+  const firstLessonId = data.modules[0]?.lessons[0]?.id;
+  const hasAccess = enrollment?.access === "owner" || enrollment?.access === "enrolled";
+  const paymentState = paymentStatus?.status;
+  const isPaymentPending = paymentState === "pending";
+  const isPaymentPaid = paymentState === "paid";
+  const isPaymentFailed = paymentState === "failed";
+
+  const handleEnroll = async () => {
+    setEnrollMessage(null);
+    setIsEnrolling(true);
+
+    const result = await authPostJson<EnrollmentResponse>("/api/v1/enrollments", {
+      courseId: data.id,
+    });
+
+    if (!result.ok || !result.data) {
+      setEnrollMessage(result.error ?? "Unable to enroll.");
+      setIsEnrolling(false);
+      return;
+    }
+
+    setEnrollment({ enrolled: true, access: "enrolled" });
+    setEnrollMessage("Enrollment confirmed.");
+    setIsEnrolling(false);
+  };
+
+  const handleCheckout = async () => {
+    setCheckoutMessage(null);
+    setCheckout(null);
+
+    const idempotencyKey = typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}`;
+    const result = await authPostJson<CheckoutResponse>(
+      "/api/v1/payments/checkout",
+      { courseId: data.id },
+      {
+        headers: {
+          "x-idempotency-key": idempotencyKey,
+        },
+      }
+    );
+
+    if (!result.ok || !result.data) {
+      setCheckoutMessage(result.error ?? "Unable to start checkout.");
+      return;
+    }
+
+    setCheckout(result.data);
+    setPaymentStatus({
+      courseId: data.id,
+      hasPayment: true,
+      paymentId: result.data.paymentId,
+      status: result.data.status,
+      amountCents: result.data.amountCents,
+      currency: result.data.currency,
+    });
+    setCheckoutMessage("Checkout session created.");
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-16">
@@ -110,21 +243,95 @@ export default function CourseDetailPage({ params }: CourseDetailPageProps) {
         <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-slate-500">
           <span>Level: {data.level ?? "intro"}</span>
           <span>{data.modules.length} modules</span>
+          {progress && (
+            <span>
+              Progress: {progress.completedLessons}/{progress.totalLessons} ({progress.percentComplete}
+              %)
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-4">
           <Link className="text-sm font-semibold text-slate-900" href={`/courses/${data.id}/edit`}>
             Edit course
           </Link>
-          <Link className="text-sm font-semibold text-slate-900" href={`/courses/${data.id}/watch`}>
-            Watch intro
-          </Link>
+          {hasAccess ? (
+            <Link
+              className="text-sm font-semibold text-slate-900"
+              href={
+                firstLessonId
+                  ? `/courses/${data.id}/watch?lessonId=${firstLessonId}`
+                  : `/courses/${data.id}/watch`
+              }
+            >
+              Start lesson
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={handleEnroll}
+              disabled={isEnrolling}
+              className="text-sm font-semibold text-slate-900"
+            >
+              Enroll to access lessons
+            </button>
+          )}
         </div>
+        {!hasAccess && (
+          <div className="rounded-3xl border border-slate-900/10 bg-white/70 p-6 text-sm text-slate-600">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              Enrollment required
+            </p>
+            <p className="mt-2">Enroll to unlock the lessons and watch experience.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={isPaymentPending || isPaymentPaid}
+                className="h-10 rounded-full bg-slate-900 px-4 text-sm font-semibold text-white"
+              >
+                {isPaymentFailed ? "Retry checkout" : "Start checkout"}
+              </button>
+              <button
+                type="button"
+                onClick={handleEnroll}
+                disabled={isEnrolling}
+                className="h-10 rounded-full border border-slate-900/10 px-4 text-sm font-semibold text-slate-900"
+              >
+                Enroll without checkout
+              </button>
+            </div>
+            {paymentStatus?.status && (
+              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                Payment status: {paymentStatus.status}
+              </p>
+            )}
+            {checkoutMessage && (
+              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                {checkoutMessage}
+              </p>
+            )}
+            {checkout && (
+              <p className="mt-2 text-xs text-slate-500">
+                Checkout URL: {checkout.checkoutUrl}
+              </p>
+            )}
+            {enrollMessage && (
+              <p className="mt-2 text-xs uppercase tracking-[0.2em] text-emerald-600">
+                {enrollMessage}
+              </p>
+            )}
+          </div>
+        )}
       </header>
 
       <section className="space-y-6">
         {data.modules.length === 0 ? (
           <div className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 text-sm text-slate-600">
             No modules have been added yet.
+          </div>
+        ) : !hasAccess ? (
+          <div className="rounded-3xl border border-slate-900/10 bg-white/70 p-8 text-sm text-slate-600">
+            Enroll to view lesson details and start learning.
           </div>
         ) : (
           data.modules.map((moduleItem) => (
@@ -158,15 +365,23 @@ export default function CourseDetailPage({ params }: CourseDetailPageProps) {
                       className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <Link
+                          className="text-sm font-semibold text-slate-900"
+                          href={`/courses/${data.id}/watch?lessonId=${lesson.id}`}
+                        >
                           {lesson.order}. {lesson.title}
-                        </p>
+                        </Link>
                         {lesson.durationMinutes !== undefined && (
                           <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
                             {lesson.durationMinutes} min
                           </span>
                         )}
                       </div>
+                      {progress?.completedLessonIds.includes(lesson.id) && (
+                        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-emerald-600">
+                          Completed
+                        </p>
+                      )}
                     </div>
                   ))
                 )}

@@ -57,3 +57,15 @@ export type Progress = {
   completed: boolean;
   updatedAt: ISODateString;
 };
+
+export type AnalyticsEventType = "lesson_completed" | "watch_snapshot" | "video_event";
+
+export type AnalyticsEvent = {
+  id: string;
+  userId: UserId;
+  courseId: CourseId;
+  lessonId?: LessonId;
+  eventType: AnalyticsEventType;
+  metadata?: Record<string, string | number | boolean>;
+  recordedAt: ISODateString;
+};
