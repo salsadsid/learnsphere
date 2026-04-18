@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { postJson } from "@/shared/api";
-import { setTokens } from "@/shared/auth-storage";
 
 type LoginResponse = {
   accessToken: string;
@@ -63,11 +62,6 @@ export default function LoginPage() {
       setMessage(result.error ?? "Login failed.");
       return;
     }
-
-    setTokens({
-      accessToken: result.data.accessToken,
-      refreshToken: result.data.refreshToken,
-    });
 
     setStatus("success");
     setMessage("Signed in. Redirecting to your next step.");

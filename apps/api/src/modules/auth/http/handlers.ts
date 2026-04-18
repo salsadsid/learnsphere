@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import * as bcrypt from "bcryptjs";
 import { AppError } from "../../../shared/errors";
-import { validateLoginInput, validateRefreshInput, validateRegisterInput } from "./validation";
+import { validateLoginInput, validateRegisterInput } from "./validation";
 import { issueAccessToken } from "../infra/token";
 import {
   createRefreshToken,
@@ -21,8 +21,20 @@ import type {
   RefreshResponseDto,
   RegisterResponseDto,
 } from "./dto";
+import { setAuthCookies, clearAuthCookies } from "../infra/cookies";
 
 type AuthenticatedRequest = Request & { user?: AuthUser };
+
+function extractRefreshToken(req: Request): string | null {
+  if (typeof req.body?.refreshToken === "string" && req.body.refreshToken.length > 0) {
+    return req.body.refreshToken;
+  }
+  const cookie = req.cookies?.refresh_token;
+  if (typeof cookie === "string" && cookie.length > 0) {
+    return cookie;
+  }
+  return null;
+}
 
 const buildUserResponse = (user?: AuthUser): MeResponseDto => ({
   id: user?.id ?? "",
@@ -94,6 +106,8 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
       subject: user.email,
     });
 
+    setAuthCookies(res, token.accessToken, refreshToken.token);
+
     const response: LoginResponseDto = {
       ...token,
       refreshToken: refreshToken.token,
@@ -107,18 +121,17 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
 
 export const refreshHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const validation = validateRefreshInput(req.body);
-    if (!validation.isValid || !validation.data) {
+    const refreshTokenValue = extractRefreshToken(req);
+    if (!refreshTokenValue) {
       throw new AppError({
-        status: 400,
-        title: "Validation Error",
-        detail: "Invalid refresh input.",
-        errors: validation.errors,
-        type: "https://httpstatuses.com/400",
+        status: 401,
+        title: "Unauthorized",
+        detail: "Refresh token is missing.",
+        type: "https://httpstatuses.com/401",
       });
     }
 
-    const stored = await findRefreshToken(validation.data.refreshToken);
+    const stored = await findRefreshToken(refreshTokenValue);
     if (!stored || !isRefreshTokenActive(stored)) {
       throw new AppError({
         status: 401,
@@ -158,6 +171,8 @@ export const refreshHandler = async (req: Request, res: Response, next: NextFunc
       subject: user.email,
     });
 
+    setAuthCookies(res, token.accessToken, newRefreshToken.token);
+
     const response: RefreshResponseDto = {
       ...token,
       refreshToken: newRefreshToken.token,
@@ -171,18 +186,8 @@ export const refreshHandler = async (req: Request, res: Response, next: NextFunc
 
 export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const validation = validateRefreshInput(req.body);
-    if (!validation.isValid || !validation.data) {
-      throw new AppError({
-        status: 400,
-        title: "Validation Error",
-        detail: "Invalid logout input.",
-        errors: validation.errors,
-        type: "https://httpstatuses.com/400",
-      });
-    }
-
-    const stored = await findRefreshToken(validation.data.refreshToken);
+    const token = extractRefreshToken(req);
+    const stored = token ? await findRefreshToken(token) : null;
     if (stored) {
       await revokeRefreshToken(stored);
       const user = await findUserById(stored.userId);
@@ -196,6 +201,7 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
       }
     }
 
+    clearAuthCookies(res);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -204,18 +210,8 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
 
 export const revokeHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const validation = validateRefreshInput(req.body);
-    if (!validation.isValid || !validation.data) {
-      throw new AppError({
-        status: 400,
-        title: "Validation Error",
-        detail: "Invalid revoke input.",
-        errors: validation.errors,
-        type: "https://httpstatuses.com/400",
-      });
-    }
-
-    const stored = await findRefreshToken(validation.data.refreshToken);
+    const token = extractRefreshToken(req);
+    const stored = token ? await findRefreshToken(token) : null;
     if (stored) {
       await revokeRefreshToken(stored);
       const user = await findUserById(stored.userId);

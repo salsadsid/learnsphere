@@ -1,91 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { authGetJson } from "@/shared/api";
-import { clearTokens } from "@/shared/auth-storage";
-
-type MeResponse = {
-  id: string;
-  email: string;
-  role: string;
-  createdAt: string;
-};
-
-type GuardState = "checking" | "authorized" | "unauthorized" | "forbidden";
+import { useAuth } from "@/providers/auth-provider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AuthGuardProps = {
   children: React.ReactNode;
 };
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const [state, setState] = useState<GuardState>("checking");
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    let isActive = true;
+    if (isLoading) return;
 
-    const checkAuth = async () => {
-      const result = await authGetJson<MeResponse>("/api/v1/auth/me");
-      if (!isActive) {
-        return;
-      }
+    if (!isAuthenticated) {
+      const next = pathname ? `?next=${encodeURIComponent(pathname)}&reason=expired` : "?reason=expired";
+      router.replace(`/auth/login${next}`);
+    }
+  }, [isLoading, isAuthenticated, pathname, router]);
 
-      if (result.ok) {
-        setState("authorized");
-        return;
-      }
-
-      if (result.status === 403) {
-        setState("forbidden");
-        return;
-      }
-
-      clearTokens();
-      setState("unauthorized");
-      const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
-      const reason = "reason=expired";
-      const separator = next ? "&" : "?";
-      router.replace(`/auth/login${next}${separator}${reason}`);
-    };
-
-    checkAuth();
-
-    return () => {
-      isActive = false;
-    };
-  }, [pathname, router]);
-
-  if (state === "checking") {
+  if (isLoading) {
     return (
-      <div className="flex w-full items-center justify-center py-20 text-sm text-slate-600">
-        Checking your session...
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-20">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-96" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
       </div>
     );
   }
 
-  if (state === "forbidden") {
+  if (!isAuthenticated) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 py-20 text-sm text-slate-700">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Access denied</p>
-        <h2 className="text-2xl font-semibold text-slate-900 font-[var(--font-display)]">
-          You do not have permission to view this page.
-        </h2>
-        <p className="text-sm text-slate-600">
-          If you believe this is a mistake, sign in with the correct account.
-        </p>
-        <Link className="text-sm font-semibold text-slate-900" href="/auth/login">
-          Go to sign in
-        </Link>
-      </div>
-    );
-  }
-
-  if (state === "unauthorized") {
-    return (
-      <div className="flex w-full items-center justify-center py-20 text-sm text-slate-600">
+      <div className="flex w-full items-center justify-center py-20 text-sm text-muted-foreground">
         Redirecting to sign in...
       </div>
     );

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export type PageShellProps = {
   children: ReactNode;
@@ -44,13 +44,15 @@ export type GlassCardProps = {
   children: ReactNode;
   className?: string;
   animate?: boolean;
+  style?: CSSProperties;
 };
 
-export const GlassCard = ({ children, className = "", animate = false }: GlassCardProps) => (
+export const GlassCard = ({ children, className = "", animate = false, style }: GlassCardProps) => (
   <div
     className={`rounded-3xl border border-slate-900/10 bg-white/85 p-6 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.25)] ${
       animate ? "cinema-in" : ""
     } ${className}`}
+    style={style}
   >
     {children}
   </div>

@@ -27,18 +27,30 @@ const inactiveAccountError = () =>
     type: "https://httpstatuses.com/403",
   });
 
+function extractToken(req: Request): string | null {
+  const cookie = req.cookies?.access_token;
+  if (typeof cookie === "string" && cookie.length > 0) {
+    return cookie;
+  }
+
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    return header.slice("Bearer ".length).trim();
+  }
+
+  return null;
+}
+
 export const requireAuth = async (
   req: AuthenticatedRequest,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+  const token = extractToken(req);
+  if (!token) {
     next(unauthorizedError());
     return;
   }
-
-  const token = header.slice("Bearer ".length).trim();
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;

@@ -1,71 +1,94 @@
-export type ISODateString = string;
+export type {
+  UserId,
+  UserRole,
+  AuthUser,
+  AuditLogEntry,
+  RegisterRequestDto,
+  RegisterResponseDto,
+  LoginRequestDto,
+  LoginResponseDto,
+  RefreshResponseDto,
+  MeResponseDto,
+  ProfileResponseDto,
+} from "./types/auth.js";
 
-export type UserId = string;
-export type CourseId = string;
-export type ModuleId = string;
-export type LessonId = string;
-export type EnrollmentId = string;
+export type {
+  CourseId,
+  ModuleId,
+  LessonId,
+  CourseStatus,
+  CourseLevel,
+  LessonType,
+  LessonQuizOption,
+  LessonQuizQuestion,
+  LessonQuiz,
+  Course,
+  CourseModule,
+  Lesson,
+  CreateCourseRequestDto,
+  CourseResponseDto,
+  ModuleResponseDto,
+  LessonResponseDto,
+  CourseDetailResponseDto,
+  InstructorSummaryResponseDto,
+  CourseCategoriesResponseDto,
+  CreateModuleRequestDto,
+  CreateLessonRequestDto,
+  UpdateCourseRequestDto,
+  ListCoursesResponseDto,
+} from "./types/course.js";
 
-export type UserRole = "student" | "instructor" | "admin";
+export type {
+  EnrollmentId,
+  Enrollment,
+  EnrollmentResponseDto,
+  EnrollmentStatusResponseDto,
+  EnrollmentListResponseDto,
+  EnrollRequestDto,
+} from "./types/enrollment.js";
 
-export type User = {
-  id: UserId;
-  email: string;
-  passwordHash: string;
-  role: UserRole;
-  createdAt: ISODateString;
-};
+export type {
+  ProgressId,
+  ProgressRecord,
+  LessonCompletionRecord,
+  WatchSnapshotRecord,
+  VideoEventType,
+  VideoEventRecord,
+  ProgressResponseDto,
+  SaveProgressRequestDto,
+  MarkLessonCompleteRequestDto,
+  WatchSnapshotRequestDto,
+  VideoEventRequestDto,
+  SaveProgressResponseDto,
+  LessonCompletionResponseDto,
+  WatchSnapshotResponseDto,
+  VideoEventResponseDto,
+  CourseProgressResponseDto,
+  StudentCourseProgressDto,
+  InstructorEngagementMetricsDto,
+  InstructorCourseProgressResponseDto,
+  StudentCourseSummaryDto,
+  StudentDashboardTotalsDto,
+  StudentDashboardResponseDto,
+} from "./types/progress.js";
 
-export type Course = {
-  id: CourseId;
-  title: string;
-  description: string;
-  instructorId: UserId;
-  createdAt: ISODateString;
-};
+export type {
+  PaymentId,
+  PaymentStatus,
+  PaymentRecord,
+  WebhookEventRecord,
+  CreateCheckoutRequestDto,
+  CreateCheckoutResponseDto,
+  PaymentWebhookRequestDto,
+  PaymentWebhookResponseDto,
+  PaymentStatusResponseDto,
+  PaymentHistoryItemDto,
+  PaymentHistoryResponseDto,
+} from "./types/payment.js";
 
-export type CourseModule = {
-  id: ModuleId;
-  courseId: CourseId;
-  title: string;
-  order: number;
-};
-
-export type Lesson = {
-  id: LessonId;
-  moduleId: ModuleId;
-  title: string;
-  videoUrl: string;
-  order: number;
-};
-
-export type EnrollmentStatus = "active" | "completed" | "dropped";
-
-export type Enrollment = {
-  id: EnrollmentId;
-  userId: UserId;
-  courseId: CourseId;
-  status: EnrollmentStatus;
-  createdAt: ISODateString;
-};
-
-export type Progress = {
-  id: string;
-  userId: UserId;
-  lessonId: LessonId;
-  currentTime: number;
-  completed: boolean;
-  updatedAt: ISODateString;
-};
-
-export type AnalyticsEventType = "lesson_completed" | "watch_snapshot" | "video_event";
-
-export type AnalyticsEvent = {
-  id: string;
-  userId: UserId;
-  courseId: CourseId;
-  lessonId?: LessonId;
-  eventType: AnalyticsEventType;
-  metadata?: Record<string, string | number | boolean>;
-  recordedAt: ISODateString;
-};
+export type {
+  PaginatedResponse,
+  ApiErrorResponse,
+  AdminUserDto,
+  AdminUserListResponseDto,
+} from "./types/api.js";

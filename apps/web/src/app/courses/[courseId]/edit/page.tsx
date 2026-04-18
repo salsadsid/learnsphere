@@ -1021,7 +1021,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
               modules: prev.data.modules.map((moduleItem) => ({
                 ...moduleItem,
                 lessons: moduleItem.lessons.map((lesson) =>
-                  lesson.id === editingLessonId ? result.data : lesson
+                  lesson.id === editingLessonId && result.data ? result.data : lesson
                 ),
               })),
             },

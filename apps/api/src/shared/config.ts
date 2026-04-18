@@ -1,8 +1,43 @@
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config();
 
-type AppConfig = {
+const configSchema = z.object({
+  PORT: z.coerce.number().default(4000),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  JWT_SECRET: z.string().min(1),
+  WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+  REQUEST_BODY_LIMIT: z.string().default("1mb"),
+  MONGODB_URI: z.string().optional(),
+  MONGODB_DB: z.string().optional(),
+  P95_TARGET_MS: z.coerce.number().default(400),
+  METRICS_SAMPLE_SIZE: z.coerce.number().default(200),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
+  RATE_LIMIT_MAX: z.coerce.number().default(240),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().default(60),
+  ADMIN_RATE_LIMIT_MAX: z.coerce.number().default(180),
+  PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+  REDIS_URL: z.string().optional(),
+  ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD: z.string().min(8).optional(),
+  DEMO_SEED: z
+    .string()
+    .transform((v) => v === "true")
+    .default("false"),
+  DEMO_INSTRUCTOR_EMAIL: z.string().email().optional(),
+});
+
+const parsed = configSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
+  process.exit(1);
+}
+
+const env = parsed.data;
+
+export type AppConfig = {
   port: number;
   nodeEnv: string;
   jwtSecret: string;
@@ -24,39 +59,28 @@ type AppConfig = {
   demoInstructorEmail?: string;
 };
 
-const parseNumber = (value: string | undefined, fallback: number): number => {
-  if (!value) {
-    return fallback;
-  }
-
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
-
 export const config: AppConfig = {
-  port: parseNumber(process.env.PORT, 4000),
-  nodeEnv: process.env.NODE_ENV ?? "development",
-  jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
-  webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
-  requestBodyLimit: process.env.REQUEST_BODY_LIMIT ?? "1mb",
-  ...(process.env.MONGODB_URI !== undefined ? { mongoUri: process.env.MONGODB_URI } : {}),
-  ...(process.env.MONGODB_DB !== undefined ? { mongoDbName: process.env.MONGODB_DB } : {}),
-  p95TargetMs: parseNumber(process.env.P95_TARGET_MS, 400),
-  metricsSampleSize: parseNumber(process.env.METRICS_SAMPLE_SIZE, 200),
-  rateLimitWindowMs: parseNumber(process.env.RATE_LIMIT_WINDOW_MS, 60_000),
-  rateLimitMax: parseNumber(process.env.RATE_LIMIT_MAX, 240),
-  authRateLimitMax: parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 60),
-  adminRateLimitMax: parseNumber(process.env.ADMIN_RATE_LIMIT_MAX, 180),
-  ...(process.env.PAYMENT_WEBHOOK_SECRET !== undefined
-    ? { paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET }
+  port: env.PORT,
+  nodeEnv: env.NODE_ENV,
+  jwtSecret: env.JWT_SECRET,
+  webOrigin: env.WEB_ORIGIN,
+  requestBodyLimit: env.REQUEST_BODY_LIMIT,
+  p95TargetMs: env.P95_TARGET_MS,
+  metricsSampleSize: env.METRICS_SAMPLE_SIZE,
+  rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+  rateLimitMax: env.RATE_LIMIT_MAX,
+  authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
+  adminRateLimitMax: env.ADMIN_RATE_LIMIT_MAX,
+  demoSeedEnabled: env.DEMO_SEED,
+  ...(env.MONGODB_URI !== undefined ? { mongoUri: env.MONGODB_URI } : {}),
+  ...(env.MONGODB_DB !== undefined ? { mongoDbName: env.MONGODB_DB } : {}),
+  ...(env.PAYMENT_WEBHOOK_SECRET !== undefined
+    ? { paymentWebhookSecret: env.PAYMENT_WEBHOOK_SECRET }
     : {}),
-  ...(process.env.REDIS_URL !== undefined ? { redisUrl: process.env.REDIS_URL } : {}),
-  ...(process.env.ADMIN_EMAIL !== undefined ? { adminEmail: process.env.ADMIN_EMAIL } : {}),
-  ...(process.env.ADMIN_PASSWORD !== undefined
-    ? { adminPassword: process.env.ADMIN_PASSWORD }
-    : {}),
-  demoSeedEnabled: process.env.DEMO_SEED === "true",
-  ...(process.env.DEMO_INSTRUCTOR_EMAIL !== undefined
-    ? { demoInstructorEmail: process.env.DEMO_INSTRUCTOR_EMAIL }
+  ...(env.REDIS_URL !== undefined ? { redisUrl: env.REDIS_URL } : {}),
+  ...(env.ADMIN_EMAIL !== undefined ? { adminEmail: env.ADMIN_EMAIL } : {}),
+  ...(env.ADMIN_PASSWORD !== undefined ? { adminPassword: env.ADMIN_PASSWORD } : {}),
+  ...(env.DEMO_INSTRUCTOR_EMAIL !== undefined
+    ? { demoInstructorEmail: env.DEMO_INSTRUCTOR_EMAIL }
     : {}),
 };
