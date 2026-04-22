@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { postJson } from "@/shared/api";
+import { authKeys } from "@/hooks/use-auth";
 
 type LoginResponse = {
   accessToken: string;
@@ -27,6 +29,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const reason = searchParams.get("reason");
@@ -66,6 +69,7 @@ export default function LoginPage() {
     setStatus("success");
     setMessage("Signed in. Redirecting to your next step.");
     setForm(defaultForm);
+    await queryClient.invalidateQueries({ queryKey: authKeys.me });
 
     const next = searchParams.get("next");
     if (next) {

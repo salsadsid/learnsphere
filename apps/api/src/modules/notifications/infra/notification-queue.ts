@@ -1,5 +1,8 @@
 import { randomUUID } from "crypto";
 import { getQueueConnection } from "./queue-connection";
+import { createChildLogger } from "../../../shared/logger";
+
+const log = createChildLogger({ module: "notification-queue" });
 
 type EnrollmentEmailPayload = {
   userId: string;
@@ -62,17 +65,17 @@ const enqueueJob = (
 
   pendingQueue.push(record);
   metrics.queued += 1;
-  console.log("Notification job queued.", record);
+  log.info({ jobId: record.id, type: record.type }, "job queued");
   return record;
 };
 
 const defaultHandler = async (job: NotificationJob): Promise<void> => {
   switch (job.type) {
     case "enrollment.email":
-      console.log("Processing enrollment email.", job.payload);
+      log.info({ jobId: job.id, payload: job.payload }, "processing enrollment email");
       return;
     case "course.update":
-      console.log("Processing course update email.", job.payload);
+      log.info({ jobId: job.id, payload: job.payload }, "processing course update email");
       return;
     default:
       throw new Error(`Unsupported job type: ${job.type}`);
@@ -94,7 +97,7 @@ export const processNotificationQueue = async (
       await handler(job);
       job.status = "processed";
       metrics.processed += 1;
-      console.log("Notification job processed.", job);
+      log.info({ jobId: job.id, type: job.type }, "job processed");
     } catch (error) {
       job.attempts += 1;
       job.status = "failed";
@@ -105,11 +108,11 @@ export const processNotificationQueue = async (
         job.status = "dead";
         deadLetterQueue.push(job);
         metrics.deadLettered += 1;
-        console.warn("Notification job moved to dead-letter queue.", job);
+        log.warn({ jobId: job.id, attempts: job.attempts, lastError: job.lastError }, "job moved to dead-letter queue");
       } else {
         pendingQueue.push(job);
         metrics.retried += 1;
-        console.warn("Notification job retry scheduled.", job);
+        log.warn({ jobId: job.id, attempts: job.attempts }, "job retry scheduled");
       }
     }
   }

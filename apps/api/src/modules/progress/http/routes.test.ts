@@ -13,7 +13,7 @@ const createInstructorAndLogin = async (): Promise<AuthContext> => {
   const email = `instructor-${Date.now()}@example.com`;
   const password = "password123";
   const passwordHash = await bcrypt.hash(password, 10);
-  registerUser({ email, passwordHash, role: "instructor" });
+  await registerUser({ email, passwordHash, role: "instructor" });
 
   const loginResponse = await request(app)
     .post("/api/v1/auth/login")
@@ -28,7 +28,7 @@ const createStudentAndLogin = async (): Promise<AuthContext> => {
   const email = `student-${Date.now()}@example.com`;
   const password = "password123";
   const passwordHash = await bcrypt.hash(password, 10);
-  registerUser({ email, passwordHash, role: "student" });
+  await registerUser({ email, passwordHash, role: "student" });
 
   const loginResponse = await request(app)
     .post("/api/v1/auth/login")
@@ -62,7 +62,7 @@ describe("progress routes", () => {
     const lessonResponse = await request(app)
       .post(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons`)
       .set("Authorization", `Bearer ${auth.accessToken}`)
-      .send({ title: "Lesson One", durationMinutes: 5 });
+      .send({ title: "Lesson One", type: "video", resourceUrl: "https://example.com/v.mp4", durationMinutes: 5 });
 
     expect(lessonResponse.status).toBe(201);
     const lessonId = lessonResponse.body.id as string;
@@ -128,7 +128,7 @@ describe("progress routes", () => {
     const lessonResponse = await request(app)
       .post(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons`)
       .set("Authorization", `Bearer ${instructor.accessToken}`)
-      .send({ title: "Lesson One", durationMinutes: 5 });
+      .send({ title: "Lesson One", type: "video", resourceUrl: "https://example.com/v.mp4", durationMinutes: 5 });
 
     expect(lessonResponse.status).toBe(201);
     const lessonId = lessonResponse.body.id as string;
@@ -206,7 +206,7 @@ describe("progress routes", () => {
     const lessonResponse = await request(app)
       .post(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons`)
       .set("Authorization", `Bearer ${instructor.accessToken}`)
-      .send({ title: "Lesson One", durationMinutes: 6 });
+      .send({ title: "Lesson One", type: "video", resourceUrl: "https://example.com/v.mp4", durationMinutes: 6 });
 
     expect(lessonResponse.status).toBe(201);
     const lessonId = lessonResponse.body.id as string;

@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { logger } from "./logger";
 
 export type LatencySnapshotEntry = {
   key: string;
@@ -72,9 +73,7 @@ export const requestMetrics = (options: RequestMetricsOptions) => {
       recordLatency(key, durationMs, options.sampleSize);
 
       if (options.targetP95Ms !== undefined && durationMs > options.targetP95Ms) {
-        console.warn(
-          `[latency] ${key} ${durationMs.toFixed(1)}ms exceeded target ${options.targetP95Ms}ms`
-        );
+        logger.warn({ key, durationMs: Number(durationMs.toFixed(1)), targetP95Ms: options.targetP95Ms }, "latency exceeded target");
       }
     });
 

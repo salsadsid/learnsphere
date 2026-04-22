@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api:
+    name: API – lint & test
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: ci-test-secret
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: learnsphere_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install shared package
+        run: npm install
+        working-directory: packages/shared
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: apps/api
+
+      - name: Lint (types + eslint)
+        run: npm run lint
+        working-directory: apps/api
+
+      - name: Test
+        run: npm test
+        working-directory: apps/api
+
+  web:
+    name: Web – lint, test & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install shared package
+        run: npm install
+        working-directory: packages/shared
+
+      - name: Install Web dependencies
+        run: npm ci
+        working-directory: apps/web
+
+      - name: Lint (eslint)
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: apps/web
+
+      - name: Test
+        run: npm test
+        working-directory: apps/web
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/web

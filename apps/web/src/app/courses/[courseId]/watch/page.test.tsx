@@ -1,5 +1,5 @@
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import React, { Suspense } from "react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import CourseWatchPage from "./page";
 
@@ -91,7 +91,13 @@ describe("CourseWatchPage", () => {
 
     authPostJsonMock.mockResolvedValue({ ok: true, status: 201, data: {} });
 
-    render(<CourseWatchPage params={{ courseId: "course-1" }} />);
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>Loading...</div>}>
+          <CourseWatchPage params={Promise.resolve({ courseId: "course-1" })} />
+        </Suspense>
+      );
+    });
 
     await waitFor(() => {
       expect(screen.getByText("Kickoff")).toBeInTheDocument();

@@ -6,16 +6,11 @@ import { registerUser } from "../../auth/use-cases/register-user";
 
 let app: typeof import("../../../app").app;
 
-type AuthContext = {
-  accessToken: string;
-  userId: string;
-};
-
 const createUserAndLogin = async (role: "student" | "instructor") => {
   const email = `${role}-${Date.now()}@example.com`;
   const password = "password123";
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = registerUser({ email, passwordHash, role });
+  const user = await registerUser({ email, passwordHash, role });
 
   const loginResponse = await request(app)
     .post("/api/v1/auth/login")

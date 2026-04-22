@@ -1,5 +1,5 @@
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import React, { Suspense } from "react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import CourseDetailPage from "./page";
 
@@ -84,7 +84,13 @@ describe("CourseDetailPage", () => {
       },
     });
 
-    render(<CourseDetailPage params={{ courseId: "course-1" }} />);
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>Loading...</div>}>
+          <CourseDetailPage params={Promise.resolve({ courseId: "course-1" })} />
+        </Suspense>
+      );
+    });
 
     await waitFor(() => {
       expect(screen.getByText("Momentum Mastery")).toBeInTheDocument();

@@ -7,6 +7,9 @@ import {
   listCourses,
   updateCourseStatus,
 } from "../infra/course-store";
+import { createChildLogger } from "../../../shared/logger";
+
+const log = createChildLogger({ module: "seed-demo-course" });
 
 type SeedDemoCourseInput = {
   enabled: boolean;
@@ -23,7 +26,7 @@ export const seedDemoCourse = async ({
 
   const instructor = instructorEmail ? await findUserByEmail(instructorEmail) : undefined;
   if (!instructor) {
-    console.warn("Demo course seed skipped: instructor email not found.");
+    log.warn("demo course seed skipped: instructor email not found");
     return;
   }
 
@@ -386,5 +389,5 @@ export const seedDemoCourse = async ({
   });
 
   await updateCourseStatus({ courseId: reactCourse.id, status: "published" });
-  console.log("Demo course seeded: React Fundamentals.");
+  log.info("demo course seeded: React Fundamentals");
 };

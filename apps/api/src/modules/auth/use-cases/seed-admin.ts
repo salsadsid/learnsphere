@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import { AppError } from "../../../shared/errors";
 import { registerUser } from "./register-user";
+import { createChildLogger } from "../../../shared/logger";
+
+const log = createChildLogger({ module: "seed-admin" });
 
 type SeedAdminInput = {
   email?: string;
@@ -15,24 +18,22 @@ export const seedAdmin = async ({ email, password }: SeedAdminInput): Promise<vo
   }
 
   if (!email || !password) {
-    console.warn("Admin seed skipped: ADMIN_EMAIL and ADMIN_PASSWORD must both be set.");
+    log.warn("admin seed skipped: ADMIN_EMAIL and ADMIN_PASSWORD must both be set");
     return;
   }
 
   if (password.length < MIN_PASSWORD_LENGTH) {
-    console.warn(
-      `Admin seed skipped: ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters.`
-    );
+    log.warn({ minLength: MIN_PASSWORD_LENGTH }, "admin seed skipped: password too short");
     return;
   }
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     await registerUser({ email, passwordHash, role: "admin" });
-    console.log(`Admin account seeded for ${email}.`);
+    log.info({ email }, "admin account seeded");
   } catch (error) {
     if (error instanceof AppError && error.status === 409) {
-      console.log(`Admin account already exists for ${email}.`);
+      log.info({ email }, "admin account already exists");
       return;
     }
 

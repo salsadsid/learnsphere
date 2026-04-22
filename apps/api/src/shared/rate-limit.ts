@@ -14,6 +14,10 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
+export const resetRateLimitBuckets = (): void => {
+  buckets.clear();
+};
+
 export const createRateLimiter = (config: RateLimitConfig) => {
   const keyPrefix = config.keyPrefix ?? "rate";
 

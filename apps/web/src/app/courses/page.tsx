@@ -1,123 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useCourses, useCategories } from "@/hooks/use-courses";
 import { GlassCard, PageShell, Pill, SectionHeading } from "@/shared/ui";
-import { getJson } from "@/shared/api";
-
-type CourseListItem = {
-  id: string;
-  title: string;
-  summary?: string;
-  category?: string;
-  level?: "beginner" | "intermediate" | "advanced";
-  status: "draft" | "published";
-  instructorId: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type CourseListResponse = {
-  items: CourseListItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-  nextPage: number | null;
-};
-
-type CategoryResponse = {
-  categories: string[];
-};
-
-type ListState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; data: CourseListResponse };
 
 export default function CoursesPage() {
-  const [state, setState] = useState<ListState>({ status: "loading" });
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">(
-    "published"
-  );
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("published");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [categories, setCategories] = useState<string[]>([]);
+
   const [activeQuery, setActiveQuery] = useState("");
-  const [activeStatus, setActiveStatus] = useState<"all" | "draft" | "published">(
-    "published"
-  );
+  const [activeStatus, setActiveStatus] = useState<"all" | "draft" | "published">("published");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    let active = true;
-
-    const loadCategories = async () => {
-      const statusParam = statusFilter === "all" ? "" : `?status=${statusFilter}`;
-      const result = await getJson<CategoryResponse>(`/api/v1/courses/categories${statusParam}`);
-      if (!active) {
-        return;
-      }
-
-      if (!result.ok || !result.data) {
-        setCategories([]);
-        return;
-      }
-
-      setCategories(result.data.categories);
-    };
-
-    loadCategories();
-
-    return () => {
-      active = false;
-    };
-  }, [statusFilter]);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadCourses = async () => {
-      const params = new URLSearchParams();
-      if (activeQuery.trim()) {
-        params.set("q", activeQuery.trim());
-      }
-      if (activeStatus !== "all") {
-        params.set("status", activeStatus);
-      }
-      if (activeCategory !== "all") {
-        params.set("category", activeCategory);
-      }
-
-      const path = params.toString()
-        ? `/api/v1/courses?${params.toString()}`
-        : "/api/v1/courses";
-
-      const result = await getJson<CourseListResponse>(path);
-      if (!active) {
-        return;
-      }
-
-      if (!result.ok || !result.data) {
-        setState({ status: "error", message: result.error ?? "Unable to load courses." });
-        return;
-      }
-
-      setState({ status: "ready", data: result.data });
-    };
-
-    loadCourses();
-
-    return () => {
-      active = false;
-    };
-  }, [activeQuery, activeStatus, activeCategory]);
+  const { data: categories } = useCategories(statusFilter);
+  const { data, isLoading, error } = useCourses({
+    q: activeQuery || undefined,
+    status: activeStatus !== "all" ? activeStatus : undefined,
+    category: activeCategory !== "all" ? activeCategory : undefined,
+    page,
+  });
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setActiveQuery(query);
     setActiveStatus(statusFilter);
     setActiveCategory(categoryFilter);
+    setPage(1);
   };
 
   const handleReset = () => {
@@ -127,6 +38,7 @@ export default function CoursesPage() {
     setActiveQuery("");
     setActiveStatus("published");
     setActiveCategory("all");
+    setPage(1);
   };
 
   return (
@@ -186,7 +98,7 @@ export default function CoursesPage() {
               onChange={(event) => setCategoryFilter(event.target.value)}
             >
               <option value="all">All categories</option>
-              {categories.map((category) => (
+              {(categories?.categories ?? []).map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -211,49 +123,75 @@ export default function CoursesPage() {
         </form>
       </GlassCard>
 
-      {state.status === "loading" && (
+      {isLoading && (
         <GlassCard className="text-sm text-slate-600">Loading courses...</GlassCard>
       )}
 
-      {state.status === "error" && (
+      {error && (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-10 text-sm text-rose-700">
-          {state.message}
+          {error.message}
         </div>
       )}
 
-      {state.status === "ready" && (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {state.data.items.length === 0 ? (
-            <GlassCard className="text-sm text-slate-600">
-              No courses are available yet.
-            </GlassCard>
-          ) : (
-            state.data.items.map((course) => (
-              <Link
-                key={course.id}
-                href={`/courses/${course.id}`}
-                className="group rounded-3xl border border-white/50 bg-white/80 p-6 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.6)] transition hover:-translate-y-2 hover:border-cyan-200/60"
+      {data && (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {data.items.length === 0 ? (
+              <GlassCard className="text-sm text-slate-600">
+                No courses are available yet.
+              </GlassCard>
+            ) : (
+              data.items.map((course) => (
+                <Link
+                  key={course.id}
+                  href={`/courses/${course.id}`}
+                  className="group rounded-3xl border border-white/50 bg-white/80 p-6 shadow-[0_20px_60px_-45px_rgba(15,23,42,0.6)] transition hover:-translate-y-2 hover:border-cyan-200/60"
+                >
+                  <div className="flex items-center justify-between">
+                    <Pill label={course.category ?? "General"} tone="accent" />
+                    <span className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                      {course.status}
+                    </span>
+                  </div>
+                  <h2 className="mt-5 text-2xl font-semibold text-slate-900 group-hover:text-slate-800">
+                    {course.title}
+                  </h2>
+                  <p className="mt-3 text-sm text-slate-600">
+                    {course.summary ?? "Build momentum with focused learning modules."}
+                  </p>
+                  <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-500">
+                    <span>Level {course.level ?? "intro"}</span>
+                    <span>Open now</span>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+
+          {data.totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={data.page <= 1}
+                className="h-9 rounded-full border border-slate-900/15 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-slate-900/30 disabled:opacity-60"
               >
-                <div className="flex items-center justify-between">
-                  <Pill label={course.category ?? "General"} tone="accent" />
-                  <span className="text-xs uppercase tracking-[0.3em] text-slate-500">
-                    {course.status}
-                  </span>
-                </div>
-                <h2 className="mt-5 text-2xl font-semibold text-slate-900 group-hover:text-slate-800">
-                  {course.title}
-                </h2>
-                <p className="mt-3 text-sm text-slate-600">
-                  {course.summary ?? "Build momentum with focused learning modules."}
-                </p>
-                <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-500">
-                  <span>Level {course.level ?? "intro"}</span>
-                  <span>Open now</span>
-                </div>
-              </Link>
-            ))
+                Previous
+              </button>
+              <span>
+                Page {data.page} of {data.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => (data.nextPage ? prev + 1 : prev))}
+                disabled={!data.nextPage}
+                className="h-9 rounded-full border border-slate-900/15 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-slate-900/30 disabled:opacity-60"
+              >
+                Next
+              </button>
+            </div>
           )}
-        </div>
+        </>
       )}
     </PageShell>
   );

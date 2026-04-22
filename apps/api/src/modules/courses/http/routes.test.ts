@@ -10,11 +10,11 @@ type AuthContext = {
   password: string;
 };
 
-const createAdminAndLogin = async (): Promise<AuthContext> => {
-  const email = `admin-${Date.now()}@example.com`;
+const createInstructorAndLogin = async (): Promise<AuthContext> => {
+  const email = `instructor-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
   const password = "password123";
   const passwordHash = await bcrypt.hash(password, 10);
-  registerUser({ email, passwordHash, role: "admin" });
+  await registerUser({ email, passwordHash, role: "instructor" });
 
   const loginResponse = await request(app)
     .post("/api/v1/auth/login")
@@ -31,7 +31,7 @@ const createAdminAndLogin = async (): Promise<AuthContext> => {
 
 describe("course routes", () => {
   it("supports basic course lifecycle", async () => {
-    const auth = await createAdminAndLogin();
+    const auth = await createInstructorAndLogin();
 
     const createResponse = await request(app)
       .post("/api/v1/courses")
@@ -67,7 +67,7 @@ describe("course routes", () => {
     const lessonResponse = await request(app)
       .post(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons`)
       .set("Authorization", `Bearer ${auth.accessToken}`)
-      .send({ title: "Strategy basics", durationMinutes: 15 });
+      .send({ title: "Strategy basics", type: "video", resourceUrl: "https://example.com/video.mp4", durationMinutes: 15 });
 
     expect(lessonResponse.status).toBe(201);
 

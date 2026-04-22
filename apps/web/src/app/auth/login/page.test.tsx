@@ -9,6 +9,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("LoginPage", () => {
   it("renders the login heading", () => {
     render(<LoginPage />);

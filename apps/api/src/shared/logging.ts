@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { randomUUID } from "crypto";
+import { logger } from "./logger";
 
 type RequestWithId = Request & { requestId?: string };
 
@@ -21,8 +22,9 @@ export const requestLogger = (options: LoggerOptions = {}) => {
     res.on("finish", () => {
       const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
       const ip = req.ip ?? "unknown";
-      console.log(
-        `[${requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs.toFixed(1)}ms ip=${ip}`
+      logger.info(
+        { requestId, method: req.method, url: req.originalUrl, statusCode: res.statusCode, durationMs: Number(durationMs.toFixed(1)), ip },
+        "request completed"
       );
     });
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import CoursesPage from "./page";
 
@@ -14,17 +15,12 @@ vi.mock("@/shared/api", () => ({
   getJson: (...args: unknown[]) => getJsonMock(...args),
 }));
 
+const createTestClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
 describe("CoursesPage", () => {
   it("renders course list data", async () => {
-    getJsonMock
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        data: {
-          categories: ["Growth"],
-        },
-      })
-      .mockResolvedValueOnce({
+    getJsonMock.mockResolvedValue({
       ok: true,
       status: 200,
       data: {
@@ -46,10 +42,15 @@ describe("CoursesPage", () => {
         total: 1,
         totalPages: 1,
         nextPage: null,
-        },
-      });
+        categories: ["Growth"],
+      },
+    });
 
-    render(<CoursesPage />);
+    render(
+      <QueryClientProvider client={createTestClient()}>
+        <CoursesPage />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Momentum Mastery")).toBeInTheDocument();

@@ -3,6 +3,7 @@ import { app } from "./app";
 import { connectToDatabase, disconnectFromDatabase } from "./shared/db";
 import { seedAdmin } from "./modules/auth/use-cases/seed-admin";
 import { seedDemoCourse } from "./modules/courses/use-cases/seed-demo-course";
+import { logger } from "./shared/logger";
 
 const port = config.port;
 
@@ -21,7 +22,7 @@ const startServer = async (): Promise<void> => {
   });
 
   const server = app.listen(port, () => {
-    console.log(`API running on ${port}`);
+    logger.info({ port }, "API started");
   });
 
   const shutdown = async () => {
@@ -30,15 +31,15 @@ const startServer = async (): Promise<void> => {
   };
 
   process.on("SIGINT", () => {
-    shutdown().catch((error) => console.error("Failed to shutdown.", error));
+    shutdown().catch((err) => logger.error({ err }, "shutdown failed"));
   });
 
   process.on("SIGTERM", () => {
-    shutdown().catch((error) => console.error("Failed to shutdown.", error));
+    shutdown().catch((err) => logger.error({ err }, "shutdown failed"));
   });
 };
 
-startServer().catch((error) => {
-  console.error("Failed to start server.", error);
+startServer().catch((err) => {
+  logger.error({ err }, "failed to start server");
   process.exit(1);
 });
